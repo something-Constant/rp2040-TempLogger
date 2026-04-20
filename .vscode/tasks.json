@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "Build Ninja",
+            "command": "cd '${workspaceFolder}'/build ; Ninja",
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Build Cmake",
+            "command": "cd '${workspaceFolder}'/build ; Cmake -G Ninja ..",
+            "problemMatcher": []
+        }
+    ]
+}
