@@ -4,13 +4,25 @@
         {
             "type": "shell",
             "label": "Build Ninja",
-            "command": "cd '${workspaceFolder}'/build ; Ninja",
+            "command": "cd '${workspaceFolder}/build' ; Ninja",
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Generate Cmake",
+            "command": "cd '${workspaceFolder}'; cmake --build",
             "problemMatcher": []
         },
         {
             "type": "shell",
             "label": "Build Cmake",
-            "command": "cd '${workspaceFolder}'/build ; Cmake -G Ninja ..",
+            "command": "cd '${workspaceFolder}'; cmake -S ./ -B ./build/",
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "ReBuild Cmake",
+            "command": "cd '${workspaceFolder}'; cmake -S ./ -B ./build/  --fresh",
             "problemMatcher": []
         }
     ]

@@ -1,0 +1,11 @@
+# Ignore a folder
+node_modules/
+dist/
+build/
+__pycache__/
+
+# Ignore a specific file
+pico_sdk_import.cmake
+
+*.bin
+*.hex

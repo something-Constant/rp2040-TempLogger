@@ -1,0 +1,30 @@
+[
+    // Build Ninja
+    {
+        "key": "ctrl+shift+b",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build Ninja",
+        "when": "!inDebugMode"
+    },
+    // Generate CMake
+    {
+        "key": "ctrl+shift+g",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Generate Cmake",
+        "when": "!inDebugMode"
+    },
+    // Build CMake
+    {
+        "key": "ctrl+shift+c",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Build Cmake",
+        "when": "!inDebugMode"
+    },
+    // Rebuild CMake (Fresh)
+    {
+        "key": "ctrl+shift+r",
+        "command": "workbench.action.tasks.runTask",
+        "args": "ReBuild Cmake",
+        "when": "!inDebugMode"
+    }
+]
