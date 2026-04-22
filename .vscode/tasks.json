@@ -3,26 +3,32 @@
     "tasks": [
         {
             "type": "shell",
+            "label": "Build & Upload",
+            "command": "cd '${workspaceFolder}' ; cmake --build ./build; ./copy_to_pico.bat",
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
             "label": "Build Ninja",
             "command": "cd '${workspaceFolder}/build' ; Ninja",
             "problemMatcher": []
         },
         {
             "type": "shell",
-            "label": "Generate Cmake",
-            "command": "cd '${workspaceFolder}'; cmake --build",
+            "label": "Build Cmake",
+            "command": "cd '${workspaceFolder}'; cmake --build ./build",
             "problemMatcher": []
         },
         {
             "type": "shell",
-            "label": "Build Cmake",
+            "label": "Generate Cmake",
             "command": "cd '${workspaceFolder}'; cmake -S ./ -B ./build/",
             "problemMatcher": []
         },
         {
             "type": "shell",
             "label": "ReBuild Cmake",
-            "command": "cd '${workspaceFolder}'; cmake -S ./ -B ./build/  --fresh",
+            "command": "cd '${workspaceFolder}';rm ./build ;cmake -S ./ -B ./build/  --fresh",
             "problemMatcher": []
         }
     ]

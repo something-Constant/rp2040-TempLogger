@@ -2,11 +2,13 @@
     "configurations": [
         {
             "name": "Pico",
-            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "compileCommands": [
+                "${workspaceFolder}/build/compile_commands.json"
+            ],
             "configurationProvider": "ms-vscode.cmake-tools",
             "intelliSenseMode": "linux-gcc-arm",
-            "compilerPath": "P:/13.2 Rel1/bin/arm-none-eabi-gcc.exe",
-            "cStandard": "c11",
+            "compilerPath": "arm-none-eabi-gcc.exe",
+            "cStandard": "c99",
             "cppStandard": "c++17"
         }
     ],

@@ -7,14 +7,23 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_SOURCE_DIR}/Core/Inc
 )
 
+
 # target_include_directories(${PROJECT_NAME} PUBLIC ../Lib)
 # target_include_directories(${PROJECT_NAME} PUBLIC ../Lib)
 target_link_libraries(${PROJECT_NAME}
     pico_stdlib
+    pico_util
+    pico_multicore
+
     hardware_i2c
     hardware_adc
     hardware_gpio
-    
+    hardware_rtc
+    hardware_timer
+    hardware_dma
+    hardware_irq
+    hardware_spi
+
     ssd1306
 )
 

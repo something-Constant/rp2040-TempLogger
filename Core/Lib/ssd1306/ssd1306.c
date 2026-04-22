@@ -56,6 +56,7 @@ void SetPixel(uint8_t x, uint8_t y, uint8_t Status) {
 }
 
 void LCD_init(void) {
+
     SendLcd(Command_Reg, Contrast_Reg);
     SendLcd(Command_Reg, Contrast_Value);
 

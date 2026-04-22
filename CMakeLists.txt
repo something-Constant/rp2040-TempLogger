@@ -22,9 +22,9 @@ set(PICO_DEOPTIMIZED_DEBUG 1)
 
 
 # Build Type
-# set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
+set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "" FORCE)
 
-set(CMAKE_BUILD_TYPE "Debug")       # No optimization, debug symbols
+# set(CMAKE_BUILD_TYPE "Debug")       # No optimization, debug symbols
 # set(CMAKE_BUILD_TYPE "Release")     # Full optimization, no debug
 # set(CMAKE_BUILD_TYPE "RelWithDebInfo")  # Optimized + debug symbols
 # set(CMAKE_BUILD_TYPE "MinSizeRel")  # Optimize for size

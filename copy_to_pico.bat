@@ -15,9 +15,24 @@ if not exist "%UF2_FILE%" (
     pause
     exit /b 1
 )
+@REM :notfound
+@REM :: Find Pico drive (look for drive with RPI-RP2 label)
+@REM for %%D in (D E F G H I J K L M N) do (
+@REM     if exist %%D:\ (
+@REM         if exist %%D:\INFO_UF2.TXT (
+@REM             set PICO_DRIVE=%%D:
+@REM             set FOUND=1
+@REM             goto :found
+@REM         )
+@REM     )
+@REM )
 
+@REM goto :notfound
+
+
+:notfound
 :: Find Pico drive (look for drive with RPI-RP2 label)
-for %%D in (D E F G H I J K L M N) do (
+for %%D in (D) do (
     if exist %%D:\ (
         if exist %%D:\INFO_UF2.TXT (
             set PICO_DRIVE=%%D:
@@ -26,6 +41,9 @@ for %%D in (D E F G H I J K L M N) do (
         )
     )
 )
+
+goto :notfound
+
 
 :found
 if %FOUND% equ 1 (
