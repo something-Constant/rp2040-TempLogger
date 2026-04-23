@@ -39,6 +39,19 @@ int main() {
     gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
     gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
 
+    /// SPI init
+    spi_init(spi1, 2000000);
+    spi_set_format(spi1, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
+
+    gpio_set_function(10, GPIO_FUNC_SPI);
+    gpio_set_function(11, GPIO_FUNC_SPI);
+    gpio_set_function(12, GPIO_FUNC_SPI);
+    // gpio_set_function(13, GPIO_FUNC_SPI);
+
+    gpio_init(SD_CS_PIN);
+    gpio_set_dir(SD_CS_PIN, GPIO_OUT);
+    gpio_pull_up(SD_CS_PIN);
+
     /// RTC init
     rtc_init();
     rtc_set_datetime(&DateTime);
@@ -49,7 +62,7 @@ int main() {
 
     rtc_get_datetime(&rtc_alarm);
     sleep_us(70);
-    
+
     rtc_alarm.sec += 30;
     if (rtc_alarm.sec >= 60) {
         rtc_alarm.sec -= 60;
@@ -71,6 +84,7 @@ int main() {
     // LCD Init
     LCD_init();
     SetXY(0, 0);
+    ClearLcd(0, 0);
 
     adc_select_input(0);
     moving_average_init(&mof, NTC_ADC2Temperature(adc_read()), 4, 16);
@@ -79,7 +93,90 @@ int main() {
     moving_average_init(&Cor, 0, 4, 16);
 
     adc_select_input(4);
+
     median_init(&Core_ADC, adc_read());
+
+    // // Power up SD card
+    // gpio_put(SD_CS_PIN, 1); // CS high (inactive)
+    // sleep_ms(100);          // Wait for SD card to power up
+
+    // // Send at least 74 clock cycles with CS high
+    // for (int i = 0; i < 10; i++) {
+    //     uint8_t dummy = 0xFF;
+    //     spi_write_blocking(spi1, &dummy, 1);
+    // }
+
+    FATFS fs;
+    FATFS *fs_p;
+    DWORD fre_clust, fre_sect, tot_sect;
+    FRESULT res;
+    FRESULT fr;
+
+    fr = f_mount(&fs, "0:", 1);
+
+    if (fr != FR_OK) {
+        // Show error pattern
+        sprintf(Data, "fr: %d", fr);
+        draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+        SendBuffer(Buffer);
+        ClearBuffer(Buffer);
+
+        while (1) {
+            gpio_put(Led, 1);
+            sleep_ms(500);
+
+            gpio_put(Led, 0);
+            sleep_ms(500);
+        }
+    }
+
+    res = f_getfree("0:", &fre_clust, &fs_p);
+
+    if (res) {
+        sprintf(Data, "res: %d", res);
+        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+        SendBuffer(Buffer);
+        ClearBuffer(Buffer);
+
+        while (1) {
+            gpio_put(Led, 1);
+            sleep_ms(10);
+
+            gpio_put(Led, 0);
+            sleep_ms(10);
+        }
+    }
+
+    // Calculate sizes
+    tot_sect = (fs_p->n_fatent - 2) * fs_p->csize;
+    fre_sect = fre_clust * fs_p->csize;
+
+    // Convert to MB (assuming 512-byte sectors)
+    // 1 MB = 1024 KB = 1024 * 1024 bytes
+    // Total bytes = tot_sect * 512
+    // Total MB = (tot_sect * 512) / (1024 * 1024) = tot_sect / 2048
+    // Show GB with 1 decimal place
+    uint32_t total_gb_int  = tot_sect / 2097152;
+    uint32_t total_gb_frac = ((tot_sect % 2097152) * 10) / 2097152;
+
+    sprintf(Data, "Total: %lu.%lu GB", total_gb_int, total_gb_frac);
+    draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+    uint32_t free_gb_int  = fre_sect / 2097152;
+    uint32_t free_gb_frac = ((fre_sect % 2097152) * 10) / 2097152;
+
+    sprintf(Data, "Free: %lu.%lu GB", free_gb_int, free_gb_frac);
+    draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+    SendBuffer(Buffer);
+    ClearBuffer(Buffer);
+
+    gpio_put(Led, 1);
+
+    sleep_ms(5000);
+    gpio_put(Led, 0);
+    // Get total sectors and free sectors
 
     while (1) {
         //// Core temperture start
@@ -100,11 +197,14 @@ int main() {
         /// print time
         rtc_get_datetime(&DateTime);
         sleep_us(70);
-        sprintf(Data, "%02d:%02d:%02d", DateTime.hour, DateTime.min, DateTime.sec);
+        sprintf(Data, "time: %02d:%02d:%02d", DateTime.hour, DateTime.min, DateTime.sec);
         draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
 
-        sprintf(Data, "alarm: %02d:%02d:%02d", rtc_alarm.hour, rtc_alarm.min, rtc_alarm.sec);
-        draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+        // sprintf(Data, "alarm: %02d:%02d:%02d", rtc_alarm.hour, rtc_alarm.min, rtc_alarm.sec);
+        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        // sprintf(Data, "%10lu KiB total drive space. %10lu KiB available.", tot_sect / 2, fre_sect / 2);
+        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
 
         //// NTC temperture end
 

@@ -1,9 +1,21 @@
-add_library(ssd1306
-    ssd1306.c
+add_library(physical-api
+    ./fatfs_sd.c
 )
 
-target_link_libraries(ssd1306
-    hardware_i2c
+# target_include_directories(physical-api PUBLIC
+# ${CMAKE_CURRENT_SOURCE_DIR}/inc  # Use absolute path
+# ${CMAKE_CURRENT_SOURCE_DIR}      # For ./
+# ${CMAKE_SOURCE_DIR}/Core/Inc     # Where main.h likely lives
+# )
+target_include_directories(physical-api PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR} # For ./
+    ${CMAKE_SOURCE_DIR}/Core/Inc # Where main.h likely lives
 )
 
-target_include_directories(ssd1306 PUBLIC "./")
+target_link_libraries(physical-api
+    hardware_spi
+    hardware_gpio
+    pico_time
+
+    fatfs
+)

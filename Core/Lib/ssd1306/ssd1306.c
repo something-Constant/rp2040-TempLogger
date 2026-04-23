@@ -1,27 +1,9 @@
 #include "ssd1306.h"
 
-// #define I2Ch hi2c1
-
-// extern I2C_HandleTypeDef I2Ch;
-
-// typedef unsigned char byte;
-// typedef unsigned int word;
-
-// #define LcdAddres 0x78 // Write mode
-
-// #define HEIGHT 64
-// #define WIDTH 128
-
-// #define BufferSize ((WIDTH * HEIGHT) >> 3)
-
 byte Buffer[BufferSize] = {};
 
 void SendLcd(byte Register, byte Data) {
     byte I2CBuffer[2] = {Register, Data};
-
-    // i2c_write_blocking(I2Ch, LcdAddres, I2CBuffer, 2, false);
-    // i2c_write_timeout_us(I2Ch, LcdAddres, I2CBuffer, 2, false, 1000);
-
     i2c_write_blocking(I2Ch, LcdAddres, I2CBuffer, 2, false);
 }
 
@@ -56,7 +38,6 @@ void SetPixel(uint8_t x, uint8_t y, uint8_t Status) {
 }
 
 void LCD_init(void) {
-
     SendLcd(Command_Reg, Contrast_Reg);
     SendLcd(Command_Reg, Contrast_Value);
 

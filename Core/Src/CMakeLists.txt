@@ -10,10 +10,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 # target_include_directories(${PROJECT_NAME} PUBLIC ../Lib)
 # target_include_directories(${PROJECT_NAME} PUBLIC ../Lib)
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME} PUBLIC
     pico_stdlib
     pico_util
     pico_multicore
+    pico_time 
 
     hardware_i2c
     hardware_adc
@@ -25,6 +26,8 @@ target_link_libraries(${PROJECT_NAME}
     hardware_spi
 
     ssd1306
+    physical-api
+    fatfs
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

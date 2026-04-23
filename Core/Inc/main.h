@@ -8,6 +8,7 @@
 #include "pico/binary_info.h"
 #include "pico/util/datetime.h"
 #include "pico/multicore.h"
+#include "pico/time.h"
 
 #include "hardware/adc.h"
 #include "hardware/i2c.h"
@@ -23,6 +24,12 @@
 #include "font_5x7/font_render_engine.h"
 #include "moving_average_filter/moving_average_filter.h"
 #include "median_filter/median_filter.h"
+
+#include "ff.h"
+#include "fatfs_sd.h"
+
+// #define spi1 ((spi_inst_t *)spi1_hw)
+#define SD_CS_PIN 9
 
 datetime_t DateTime = {.year = 2026, .month = 4, .day = 26, .hour = 13, .min = 30};
 

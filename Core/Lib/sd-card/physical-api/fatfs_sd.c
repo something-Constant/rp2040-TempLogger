@@ -1,10 +1,8 @@
 #define TRUE 1
 #define FALSE 0
 #define bool BYTE
+#define _USE_WRITE 1
 
-#include "stm32g4xx_hal.h"
-
-#include "diskio.h"
 #include "fatfs_sd.h"
 
 volatile uint16_t Timer1, Timer2;          /* 1ms Timer Counter */
@@ -18,28 +16,23 @@ static uint8_t PowerFlag = 0;              /* Power flag */
  **************************************/
 
 /* slave select */
-inline static void SELECT(void) {
-    HAL_GPIO_WritePin(SD_CS_PORT, SD_CS_PIN, GPIO_PIN_RESET);
-    __NOP();
-}
+inline static void SELECT(void) { gpio_put(SD_CS_PIN, 0); }
 /* slave deselect */
-inline static void DESELECT(void) {
-    HAL_GPIO_WritePin(SD_CS_PORT, SD_CS_PIN, GPIO_PIN_SET);
-    __NOP();
-}
+inline static void DESELECT(void) { gpio_put(SD_CS_PIN, 1); }
 
 /* SPI transmit a byte */
 static void SPI_TxByte(uint8_t data) {
-    while (! __HAL_SPI_GET_FLAG(HSPI_SDCARD, SPI_FLAG_TXE))
+    while (spi_is_busy(spi1))
         ;
-    HAL_SPI_Transmit(HSPI_SDCARD, &data, 1, SPI_TIMEOUT);
+    spi_write_blocking(spi1, &data, 1);
 }
 
 /* SPI transmit buffer */
 static void SPI_TxBuffer(uint8_t *buffer, uint16_t len) {
-    while (! __HAL_SPI_GET_FLAG(HSPI_SDCARD, SPI_FLAG_TXE))
+    while (spi_is_busy(spi1))
         ;
-    HAL_SPI_Transmit(HSPI_SDCARD, buffer, len, SPI_TIMEOUT);
+
+    spi_write_blocking(spi1, buffer, len);
 }
 
 /* SPI receive a byte */
@@ -47,9 +40,9 @@ static uint8_t SPI_RxByte(void) {
     uint8_t dummy, data;
     dummy = 0xFF;
 
-    while (! __HAL_SPI_GET_FLAG(HSPI_SDCARD, SPI_FLAG_TXE))
+    while (spi_is_busy(spi1))
         ;
-    HAL_SPI_TransmitReceive(HSPI_SDCARD, &dummy, &data, 1, SPI_TIMEOUT);
+    spi_write_read_blocking(spi1, &dummy, &data, 1);
 
     return data;
 }
@@ -69,13 +62,13 @@ uint8_t SD_ReadyWait(void) {
 
     uint32_t waitSpiTimerTickStart;
 
-    waitSpiTimerTickStart = HAL_GetTick();
+    waitSpiTimerTickStart = to_ms_since_boot(get_absolute_time());
 
     /* if SD goes ready, receives 0xFF */
     do {
         res = SPI_RxByte();
     }
-    while ((res != 0xFF) && ((HAL_GetTick() - waitSpiTimerTickStart) < 500));
+    while ((res != 0xFF) && ((to_ms_since_boot(get_absolute_time()) - waitSpiTimerTickStart) < 500));
 
     return res;
 }
@@ -127,13 +120,13 @@ static bool SD_RxDataBlock(BYTE *buff, UINT len) {
 
     /* timeout 200ms */
     uint32_t waitSpiTimerTickStart;
-    waitSpiTimerTickStart = HAL_GetTick();
+    waitSpiTimerTickStart = to_ms_since_boot(get_absolute_time());
 
     /* loop until receive a response or timeout */
     do {
         token = SPI_RxByte();
     }
-    while ((token == 0xFF) && ((HAL_GetTick() - waitSpiTimerTickStart) < 200));
+    while ((token == 0xFF) && ((to_ms_since_boot(get_absolute_time()) - waitSpiTimerTickStart) < 200));
 
     /* invalid response */
     if (token != 0xFE)
@@ -188,9 +181,9 @@ static bool SD_TxDataBlock(const uint8_t *buff, BYTE token) {
         // FIX 3: 타임아웃 없는 무한 루프 수정
         // 카드가 계속 busy(0x00) 상태일 경우 시스템이 멈추는 것을 방지하기 위해 타임아웃을 추가합니다.
         uint32_t waitSpiTimerTickStart;
-        waitSpiTimerTickStart = HAL_GetTick();
+        waitSpiTimerTickStart = to_ms_since_boot(get_absolute_time());
 
-        while ((SPI_RxByte() == 0) && ((HAL_GetTick() - waitSpiTimerTickStart) < 200))
+        while ((SPI_RxByte() == 0) && ((to_ms_since_boot(get_absolute_time()) - waitSpiTimerTickStart) < 200))
             ;
     }
 
@@ -251,6 +244,8 @@ DSTATUS SD_disk_initialize(BYTE drv) {
     uint8_t n, type, ocr[4];
     uint32_t waitSpiTimerTickStart;
 
+    spi_set_baudrate(spi1, 400000);
+
     /* single drive, drv should be 0 */
     if (drv)
         return STA_NOINIT;
@@ -271,7 +266,7 @@ DSTATUS SD_disk_initialize(BYTE drv) {
     /* send GO_IDLE_STATE command */
     if (SD_SendCmd(CMD0, 0) == 1) {
         /* timeout 1 sec */
-        waitSpiTimerTickStart = HAL_GetTick();
+        waitSpiTimerTickStart = to_ms_since_boot(get_absolute_time());
 
         /* SDC V2+ accept CMD8 command, http://elm-chan.org/docs/mmc/mmc_e.html */
         if (SD_SendCmd(CMD8, 0x1AA) == 1) {
@@ -287,7 +282,7 @@ DSTATUS SD_disk_initialize(BYTE drv) {
                     if (SD_SendCmd(CMD55, 0) <= 1 && SD_SendCmd(CMD41, 1UL << 30) == 0)
                         break;
                 }
-                while (((HAL_GetTick() - waitSpiTimerTickStart) < 1000));
+                while (((to_ms_since_boot(get_absolute_time()) - waitSpiTimerTickStart) < 1000));
 
                 /* READ_OCR */
                 if (SD_SendCmd(CMD58, 0) == 0) {
@@ -315,7 +310,7 @@ DSTATUS SD_disk_initialize(BYTE drv) {
                         break; /* CMD1 */
                 }
             }
-            while (((HAL_GetTick() - waitSpiTimerTickStart) < 1000));
+            while (((to_ms_since_boot(get_absolute_time()) - waitSpiTimerTickStart) < 1000));
 
             /* SET_BLOCKLEN */
             if (! SD_SendCmd(CMD16, 512) != 0)
@@ -337,6 +332,8 @@ DSTATUS SD_disk_initialize(BYTE drv) {
         /* Initialization failed */
         SD_PowerOff();
     }
+
+    spi_set_baudrate(spi1, 10000000);
 
     return Stat;
 }

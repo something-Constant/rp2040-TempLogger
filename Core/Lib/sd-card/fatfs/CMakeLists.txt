@@ -1,9 +1,14 @@
-add_library(ssd1306
-    ssd1306.c
+add_library(fatfs
+    ./diskio.c
+    ./ff.c
+    ./ffsystem.c
+    ./ffunicode.c
 )
 
-target_link_libraries(ssd1306
-    hardware_i2c
+target_include_directories(fatfs PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_include_directories(ssd1306 PUBLIC "./")
+target_link_libraries(fatfs
+    physical-api
+)

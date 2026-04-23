@@ -69,4 +69,4 @@ if %FOUND% equ 1 (
     echo 5. Run this script again
 )
 
-pause
+@REM pause
