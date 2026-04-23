@@ -4,24 +4,20 @@
 #include "hardware/i2c.h"
 #include <stdint.h>
 
-
 #define LCD_128x32
 #define I2Ch i2c_default
 
 typedef unsigned char byte;
 typedef unsigned int word;
 
-// #define LcdAddres 0x78 // Write mode
-#define LcdAddres 0x3C // Write mode
-
-
+// #define LcdAddres (0x3C<<1) // Write mode 0x78 (addres in 8 bit format)
+#define LcdAddres 0x3C // raw (addres in 7 bit format)
 
 #define HEIGHT 32
 #define WIDTH 128
 
 #define BufferSize ((WIDTH * HEIGHT) >> 3)
 extern uint8_t Buffer[BufferSize];
-
 
 #define setpixel(x, y, buffer) BufferSetPixel(x, y, 1, buffer)
 
@@ -184,7 +180,6 @@ Set Display Offset:
 */
 #define Display_COM_Pins_Hardware_Config_Reg 0XDA
 #define Display_COM_Pins_Hardware_Config_Value 0X02
-
 
 void SendLcd(uint8_t Register, uint8_t Data);
 void SetXY(uint8_t x, uint8_t y);

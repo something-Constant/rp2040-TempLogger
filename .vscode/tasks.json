@@ -16,13 +16,13 @@
         {
             "type": "shell",
             "label": "Build Cmake",
-            "command": "cd '${workspaceFolder}'; cmake --build ./build",
+            "command": "cd '${workspaceFolder}'; cmake --build ./build --fresh",
             "problemMatcher": []
         },
         {
             "type": "shell",
             "label": "Generate Cmake",
-            "command": "cd '${workspaceFolder}'; cmake -S ./ -B ./build/",
+            "command": "cd '${workspaceFolder}'; cmake -S ./ -B ./build/ --fresh",
             "problemMatcher": []
         },
         {
