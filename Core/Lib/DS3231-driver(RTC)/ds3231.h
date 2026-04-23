@@ -100,6 +100,8 @@ typedef enum { per_min, min_match, min_hour_match, min_hour_day_match, min_hour_
 
 void Ds3231_init(ds3231_init *init);
 
+void Ds3231_SetTime(ds3231_init *init_status, ds3231_time *time, DateFormat format);
+void Ds3231_SetDate(ds3231_init *init_status, ds3231_date *date, DateFormat format);
 
 void Ds3231_GetTime(ds3231_time *time, DateFormat format);
 void Ds3231_GetDate(ds3231_date *date, DateFormat format);
