@@ -28,6 +28,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     ssd1306
     physical-api
     fatfs
+    ds3231
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

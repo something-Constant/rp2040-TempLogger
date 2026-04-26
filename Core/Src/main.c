@@ -24,6 +24,42 @@ MDF Core_ADC;
 
 void RTC_Callback();
 
+void ds3231_read(uint8_t reg, uint8_t *data, int len) {
+    // Fixed: use correct function names
+    i2c_write_blocking(i2c0, 0x68, &reg, 1, true);
+    i2c_read_blocking(i2c0, 0x68, data, len, false);
+}
+
+void ds3231_write(uint8_t reg, uint8_t data) {
+    uint8_t buffer[2] = {reg, data};
+    i2c_write_blocking(i2c0, 0x68, buffer, 2, false);
+}
+
+uint8_t bcd2dec(uint8_t bcd) { return ((bcd >> 4) * 10) + (bcd & 0x0F); }
+
+uint8_t dec2bcd(uint8_t dec) { return ((dec / 10) << 4) | (dec % 10); }
+
+void ds3231_read_time(ds3231_time *t) {
+    // uint8_t data[3];
+    // ds3231_read(0x00, data, 3);        // Read sec, min, hour at once
+
+    // t->sec  = bcd2dec(data[0] & 0x7F); // CH bit is bit 7
+    // t->min  = bcd2dec(data[1] & 0x7F); // Mask unused bits
+    // t->hour = bcd2dec(data[2] & 0x3F); // Mask for 24-hour mode
+
+    uint8_t data[2];
+    ds3231_read(Seconds_Reg, data, 1); // Read sec, min, hour at once
+
+    t->sec = data[0];
+
+    ds3231_read(Minutes_Reg, data, 1); // Read sec, min, hour at once
+
+    t->min = data[0];
+    ds3231_read(Hours_Reg, data, 1);   // Read sec, min, hour at once
+
+    t->hour = data[0];
+}
+
 int main() {
     uart_init(uart0, 115200);
     gpio_set_function(0, GPIO_FUNC_UART);
@@ -58,17 +94,17 @@ int main() {
     rtc_get_datetime(&DateTime);
     sleep_us(64);
 
-    rtc_enable_alarm();
+    // rtc_enable_alarm();
 
-    rtc_get_datetime(&rtc_alarm);
-    sleep_us(70);
+    // rtc_get_datetime(&rtc_alarm);
+    // sleep_us(70);
 
-    rtc_alarm.sec += 30;
-    if (rtc_alarm.sec >= 60) {
-        rtc_alarm.sec -= 60;
-        rtc_alarm.min += 1;
-    }
-    rtc_set_alarm(&rtc_alarm, RTC_Callback);
+    // rtc_alarm.sec += 30;
+    // if (rtc_alarm.sec >= 60) {
+    //     rtc_alarm.sec -= 60;
+    //     rtc_alarm.min += 1;
+    // }
+    // rtc_set_alarm(&rtc_alarm, RTC_Callback);
 
     gpio_init(Led);
     gpio_set_dir(Led, GPIO_OUT);
@@ -172,11 +208,88 @@ int main() {
     SendBuffer(Buffer);
     ClearBuffer(Buffer);
 
-    gpio_put(Led, 1);
+    ds3231_time t;
 
-    sleep_ms(5000);
-    gpio_put(Led, 0);
-    // Get total sectors and free sectors
+    // t.sec = 0x30;
+    // Ds3231_SetTime(&t, Bin);
+
+    // uint8_t data[2];
+
+    // data[0] = Status_Reg;
+    // data[1] = 0;
+
+    // i2c_write_blocking_until(i2c_bus, ds3231_add, &data[0], 1, true, 20000);
+    // i2c_read_blocking_until(i2c_bus, ds3231_add, &data[1], 1, false, 20000);
+
+    // sprintf(Data, "reg:%x", data[1]);
+    // draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+    // uart_puts(uart0, Data);
+    // data[0] = Control_Reg;
+    // data[1] = 0;
+
+    // i2c_write_blocking_until(i2c_bus, ds3231_add, &data[0], 1, true, 20000);
+    // i2c_read_blocking_until(i2c_bus, ds3231_add, &data[1], 1, false, 20000);
+
+    // sprintf(Data, "reg:%x", data[1]);
+    // draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+    // uart_puts(uart0, Data);
+
+    // SendBuffer(Buffer);
+    // ClearBuffer(Buffer);
+
+    // // sleep_ms(5000);
+
+    // data[1] = (data[1] & (~(1 << 7)));
+
+    // i2c_write_blocking_until(i2c_bus, ds3231_add, data, 2, false, 200);
+
+    // Ds3231_GetTime(&t, Bcd);
+
+    // t.sec = Generic_i2c_Resive(Seconds_Reg);
+
+    // Ds3231_GetTime(&t, Bin);
+
+    // sprintf(Data, "time: %02d:%02d:%02d", t.hour, t.min, t.sec);
+    // draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+    // SendBuffer(Buffer);
+    // ClearBuffer(Buffer);
+
+    // Set minutes to 59
+    uint8_t min_data[2] = {Minutes_Reg, 0x59}; // 59 minutes (valid BCD)
+    Generic_i2c_Send(min_data, 2);
+
+                                               // Set seconds to 50
+    uint8_t sec_data[2] = {Seconds_Reg, 0x50}; // 50 seconds (valid BCD)
+    Generic_i2c_Send(sec_data, 2);
+
+    uint8_t d[2] = {Hours_Reg, 0x11};
+
+    Generic_i2c_Send(d, 2);
+
+    d[1] = Generic_i2c_Resive(Hours_Reg);
+
+    d[1] = d[1] | (1 << 6);
+
+    Generic_i2c_Send(d, 2);
+
+    while (1) {
+        Ds3231_GetTime(&t, Bin);
+        // ds3231_read_time(&t);
+
+        // t.sec = Generic_i2c_Resive(Seconds_Reg);
+
+        sprintf(Data, "Time: %02d:%02d:%02d  %d\r\n", t.hour, t.min, t.sec, t.AM_PM);
+        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+        SendBuffer(Buffer);
+        ClearBuffer(Buffer);
+
+        uart_puts(uart0, Data);
+        sleep_ms(50);
+    }
 
     while (1) {
         //// Core temperture start
