@@ -19,6 +19,9 @@ set(PICO_SDK_PATH "P:/pico-sdk")
 set(PICO_PLATFORM "rp2040")
 set(PICO_BOARD "pico")
 set(PICO_DEOPTIMIZED_DEBUG 1)
+set(picotool_INSTALL_DIR "P:/pico--sdk/picotool/2.1.1/picotool")
+
+
 
 
 # Build Type

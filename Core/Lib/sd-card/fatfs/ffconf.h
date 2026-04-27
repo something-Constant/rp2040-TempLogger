@@ -56,7 +56,7 @@
 /* This option switches f_forward(). (0:Disable or 1:Enable) */
 
 
-#define FF_USE_STRFUNC	0
+#define FF_USE_STRFUNC	1
 #define FF_PRINT_LLI	0
 #define FF_PRINT_FLOAT	0
 #define FF_STRF_ENCODE	0
@@ -153,16 +153,16 @@
 /  on character encoding. When LFN is not enabled, these options have no effect. */
 
 
-#define FF_FS_RPATH		0
+#define FF_FS_RPATH		1
 /* This option configures support for relative path feature.
 /
-/   0: Disable relative path and remove related API functions.
+/   0: Disable relative path and remove related API functions.FF_FS_RPATH 
 /   1: Enable relative path and dot names. f_chdir() and f_chdrive() are available.
 /   2: f_getcwd() is available in addition to 1.
 */
 
 
-#define FF_PATH_DEPTH	10
+#define FF_PATH_DEPTH	3
 /*  This option defines maximum depth of directory in the exFAT volume. It is NOT
 /   relevant to FAT/FAT32 volume.
 /   For example, FF_PATH_DEPTH = 3 will able to follow a path "/dir1/dir2/dir3/file"

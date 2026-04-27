@@ -2,13 +2,16 @@
 #define _DS3231_H
 
 #include "hardware/i2c.h"
+#include "BCD_Conversion.h"
+
 #include <stdint.h>
 #include <stdio.h>
 
 #define ds3231_add 0x68U
 #define i2c_bus i2c0
 
-#define _12hour_mode
+#define negative_sigh 1
+#define posetive_sigh 0
 #define FirstDayOfWeek Saturday
 
 /** @addtogroup Exported_macro
@@ -32,6 +35,13 @@
 #define Seconds_Reg 0x00U
 #define Minutes_Reg 0x01U
 #define Hours_Reg 0x02U
+#define Time_Format_Mask 0x40U
+
+#define _12_Hours_Mask 0x1FU
+#define _24_Hours_Mask 0x3FU
+
+#define _Tens_Hours_Mask 0x10U
+#define _Twoenies_Hours_Mask 0x20U
 
 /// @brief  Date registers addrese - in BCD format
 #define Day_Reg 0x03U
@@ -54,34 +64,65 @@
 #define Control_Reg 0x0EU
 #define Status_Reg 0x0FU
 #define Aging_Offset_Reg 0x10U
-#define MSB_of_Temp_Reg 0x11U
-#define LSB_of_Temp_Reg 0x12U
+#define MSB_Temp_Reg 0x11U
+#define LSB_Temp_Reg 0x12U
 
 /// @brief  Control_Reg bit masks
-#define A1IE 0x00U
-#define A1IE 0x00U
-#define A1IE 0x00U
-#define A1IE 0x00U
+#define Control_A1IE_Mask 0x01U
+#define Control_A2IE_Mask 0x02U
+#define Control_INTCN_Mask 0x04U
+#define Control_RS1_Mask 0x08U
+#define Control_RS2_Mask 0x10U
+#define Control_CONV_Mask 0x20U
+#define Control_BBSQW_Mask 0x40U
+#define Control_EOSC_Mask 0x80U
 
-#ifdef _12hour_mode
+#define SQ_Wave_1hz_Mask 0x18U
+#define SQ_Wave_1_024hz_Mask 0x08U
+#define SQ_Wave_4_096hz_Mask 0x10U
+#define SQ_Wave_8_192hz_Mask 0x18U
+
+/// @brief  Status_Reg bit masks
+#define Status_A1F_Mask 0x01U
+#define Status_A2F_Mask 0x02U
+#define Status_BSY_Mask 0x04U
+#define Status_EN32kHz_Mask 0x08U
+#define Status_OSF_Mask 0x80U
+
+/// @brief  Aging_Offset_Reg bit masks
+#define Aging_Offset_Value_Mask 0x7FU
+#define Aging_Offset_Sign_Mask 0x80U
+
+/// @brief  MSB_Temp_Reg bit masks
+#define MSB_Temp_Data_Mask 0x7FU
+#define MSB_Temp_Sign_Mask 0x80U
+
+/// @brief  LSB_Temp_Reg bit masks
+#define Temp_LSB_Data_Mask 0xC0U
+
+typedef enum { Posetive_Sigh, Negative_Sigh } Sign;
+
 typedef enum { AM, PM } Cycle;
+typedef enum { _24hour_mode, _12hour_mode } Time_Format;
+
+typedef enum { Bcd, Bin } DateFormat;
+typedef enum { Intrupt, SquareWave } Pin_INT_SQW;
+typedef enum { _1hz, _1_024hz, _4_096hz, _8_192hz } SquareWave_Ferq;
+typedef enum { Alarm1, Alarm2 } Alarm;
+typedef enum { Osc_Disable, SqWave_Enable } Bat_Mode;
+
+/// @brief Alarms cycles
+typedef enum { per_sec, sec_match, sec_min_match, sec_min_hour_match, sec_min_hour_day_match, sec_min_hour_day_w_match } Alarm1_RATE;
+typedef enum { per_min, min_match, min_hour_match, min_hour_day_match, min_hour_day_w_match } Alarm2_RATE;
 
 typedef struct {
     uint8_t sec;
     uint8_t min;
     uint8_t hour;
+    Time_Format time_format;
     Cycle AM_PM;
 
 } ds3231_time;
-
-#else
-typedef struct {
-    uint8_t sec;
-    uint8_t min;
-    uint8_t hour;
-
-} ds3231_time;
-#endif
 
 typedef struct {
     uint8_t day_w;
@@ -105,60 +146,44 @@ typedef struct {
     uint8_t A2_day;
 } ds3231_Alarm2;
 
-typedef enum { Bcd, Bin } DateFormat;
+typedef struct {
+    Pin_INT_SQW INT_SQW_Function;
+    SquareWave_Ferq SquareWaveFerq;
+    uint8_t Osc_onBat;
+    uint8_t SqWave_onBat;
+} ds3231_init;
 
-typedef enum { Intrupt, SquareWave } Pin_INT_SQW;
-typedef enum { _1hz, _1_024hz, _4_096hz, _8_192hz } SquareWave_Ferq;
-typedef enum { Alarm1, Alarm2 } Alarm;
-typedef enum { Osc_Disable, SqWave_Enable } Bat_Mode;
+void Generic_i2c_Write(uint8_t *date, uint8_t len);
+void Generic_i2c_Read(uint8_t reg, uint8_t *value, uint8_t len);
 
-// typedef struct {
-//     Pin_INT_SQW INT_SQW_Function;
-//     SquareWave_Ferq SquareWaveFerq;
-//     uint8_t Osc_onBat;
-//     uint8_t SqWave_onBat;
-// } ds3231_init;
-
-/// @brief Alarms cycles
-typedef enum { per_sec, sec_match, sec_min_match, sec_min_hour_match, sec_min_hour_day_match, sec_min_hour_day_w_match } Alarm1_RATE;
-typedef enum { per_min, min_match, min_hour_match, min_hour_day_match, min_hour_day_w_match } Alarm2_RATE;
-
-// void Generic_i2c_Send(uint8_t *date, uint8_t len) { i2c_write_blocking_until(i2c_bus, ds3231_add, date, len, false, 200); }
-
-// uint8_t Generic_i2c_Resive(uint8_t reg) {
-//     uint8_t data;
-
-//     i2c_write_blocking_until(i2c_bus, ds3231_add, &reg, 1, true, 200);
-//     i2c_read_blocking_until(i2c_bus, ds3231_add, &data, 1, false, 200);
-
-//     return data;
-// }
-
-void Generic_i2c_Send(uint8_t *date, uint8_t len);
-
-uint8_t Generic_i2c_Resive(uint8_t reg);
-
-// void Ds3231_Set_INT_SQW_Pin(SquareWave_Ferq SquareWaveFerq, uint8_t status);
+void Ds3231_Init(ds3231_init *data);
 
 void Ds3231_SetTime(ds3231_time *time, DateFormat format);
-// void Ds3231_SetDate(ds3231_date *date, DateFormat format);
+void Ds3231_SetDate(ds3231_date *date, DateFormat format);
 
 void Ds3231_GetTime(ds3231_time *time, DateFormat format);
+void Ds3231_GetDate(ds3231_date *date, DateFormat format);
 
-// void Ds3231_GetDate(ds3231_date *date, DateFormat format);
+void Ds3231_SetAlarm1(ds3231_Alarm1 *alarm1, Alarm1_RATE period);
+void Ds3231_SetAlarm2(ds3231_Alarm2 *alarm2, Alarm2_RATE period);
+void Ds3231_SetAlarm_Interrupt(Alarm alarm_num, uint8_t status);
 
-// void Ds3231_SetAlarm1(ds3231_Alarm1 *alarm1, Alarm1_RATE period);
-// void Ds3231_SetAlarm2(ds3231_Alarm2 *alarm2, Alarm2_RATE period);
+/// @brief After Intrupt is set user must clear the flag or the INT\SQW is set until.
+void Ds3231_Reset_Alarm_Flag(Alarm alarm_num);
+uint8_t Ds3231_Read_Alarm_Flag(Alarm alarm_num);
 
-// void Ds3231_SetAlarm_Interrupt(Alarm alarm_num, uint8_t status);
+void Ds3231_Set_INT_SQW_Pin(SquareWave_Ferq SquareWaveFerq, Pin_INT_SQW status);
 
-// /// @brief After Intrupt is set user must clear the flag or the INT\SQW is set.
-// void Ds3231_Reset_Alarm_Flag(Alarm alarm_num);
+uint8_t Ds3231_check_validity_timekeeping();
+void Ds3231_Enable_Oscillator();
+uint8_t Ds3231_check_if_busy();
 
-// uint8_t Ds3231_check_validity_timekeeping();
+void Ds3231_Set_32kHz_Output(uint8_t status);
 
-// void Ds3231_Set_32kHz_Output(uint8_t status);
-// void Ds3231_Set_Aging_Offset(uint8_t sign, uint8_t value);
+void Ds3231_Set_Aging_Offset(int8_t value);
+void Ds3231_UpdateTemp_TCXO();
 
-// uint16_t Ds3231_Read_Temp();
+int16_t Ds3231_Read_Temp();
+uint8_t Ds3231_Get_Temp_Fraction(int16_t fixed_temp);
+int8_t Ds3231_Get_Temp_Integer(int16_t fixed_temp);
 #endif

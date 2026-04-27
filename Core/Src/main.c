@@ -9,7 +9,7 @@ char Data[50];
 
 #define SSD1306_I2C_CLK 400000 // 400khz
 #define Led 25
-#define Button 0
+#define Button 16
 #define Blu_stat_pin 6
 
 const float conversion_factor = 3.3f / (1 << 12);
@@ -60,6 +60,14 @@ void ds3231_read_time(ds3231_time *t) {
     t->hour = data[0];
 }
 
+// Print temperature
+void Ds3231_Print_Temp(int16_t fixed_temp, uint8_t *buff) {
+    int8_t integer   = Ds3231_Get_Temp_Integer(fixed_temp);
+    uint8_t fraction = Ds3231_Get_Temp_Fraction(fixed_temp);
+
+    sprintf(buff, "RTC T: %d.%02d°C", integer, fraction);
+}
+
 int main() {
     uart_init(uart0, 115200);
     gpio_set_function(0, GPIO_FUNC_UART);
@@ -94,22 +102,26 @@ int main() {
     rtc_get_datetime(&DateTime);
     sleep_us(64);
 
-    // rtc_enable_alarm();
+    rtc_enable_alarm();
 
-    // rtc_get_datetime(&rtc_alarm);
-    // sleep_us(70);
+    rtc_get_datetime(&rtc_alarm);
+    sleep_us(70);
 
-    // rtc_alarm.sec += 30;
-    // if (rtc_alarm.sec >= 60) {
-    //     rtc_alarm.sec -= 60;
-    //     rtc_alarm.min += 1;
-    // }
+    rtc_alarm.sec += 30;
+    if (rtc_alarm.sec >= 60) {
+        rtc_alarm.sec -= 60;
+        rtc_alarm.min += 1;
+    }
+
     // rtc_set_alarm(&rtc_alarm, RTC_Callback);
 
     gpio_init(Led);
     gpio_set_dir(Led, GPIO_OUT);
-
     gpio_put(Led, 0);
+
+    gpio_init(Button);
+    gpio_set_dir(Button, GPIO_IN);
+    gpio_pull_down(Button);
 
     // ADC Inint
     adc_init();
@@ -132,27 +144,16 @@ int main() {
 
     median_init(&Core_ADC, adc_read());
 
-    // // Power up SD card
-    // gpio_put(SD_CS_PIN, 1); // CS high (inactive)
-    // sleep_ms(100);          // Wait for SD card to power up
-
-    // // Send at least 74 clock cycles with CS high
-    // for (int i = 0; i < 10; i++) {
-    //     uint8_t dummy = 0xFF;
-    //     spi_write_blocking(spi1, &dummy, 1);
-    // }
-
     FATFS fs;
     FATFS *fs_p;
     DWORD fre_clust, fre_sect, tot_sect;
     FRESULT res;
-    FRESULT fr;
 
-    fr = f_mount(&fs, "0:", 1);
+    res = f_mount(&fs, "0:", 1);
 
-    if (fr != FR_OK) {
+    if (res != FR_OK) {
         // Show error pattern
-        sprintf(Data, "fr: %d", fr);
+        sprintf(Data, "fr: %d", res);
         draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
         SendBuffer(Buffer);
         ClearBuffer(Buffer);
@@ -188,19 +189,18 @@ int main() {
     tot_sect = (fs_p->n_fatent - 2) * fs_p->csize;
     fre_sect = fre_clust * fs_p->csize;
 
-    // Convert to MB (assuming 512-byte sectors)
     // 1 MB = 1024 KB = 1024 * 1024 bytes
     // Total bytes = tot_sect * 512
     // Total MB = (tot_sect * 512) / (1024 * 1024) = tot_sect / 2048
     // Show GB with 1 decimal place
-    uint32_t total_gb_int  = tot_sect / 2097152;
-    uint32_t total_gb_frac = ((tot_sect % 2097152) * 10) / 2097152;
+    uint32_t total_gb_int  = tot_sect >> 20;
+    uint32_t total_gb_frac = ((tot_sect % 2097152) * 10) >> 20;
 
     sprintf(Data, "Total: %lu.%lu GB", total_gb_int, total_gb_frac);
     draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
 
-    uint32_t free_gb_int  = fre_sect / 2097152;
-    uint32_t free_gb_frac = ((fre_sect % 2097152) * 10) / 2097152;
+    uint32_t free_gb_int  = fre_sect >> 20;
+    uint32_t free_gb_frac = ((fre_sect % 2097152) * 10) >> 20;
 
     sprintf(Data, "Free: %lu.%lu GB", free_gb_int, free_gb_frac);
     draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
@@ -208,88 +208,224 @@ int main() {
     SendBuffer(Buffer);
     ClearBuffer(Buffer);
 
-    ds3231_time t;
+    // move to root 0:
+    res = f_chdir("0:");
 
-    // t.sec = 0x30;
-    // Ds3231_SetTime(&t, Bin);
-
-    // uint8_t data[2];
-
-    // data[0] = Status_Reg;
-    // data[1] = 0;
-
-    // i2c_write_blocking_until(i2c_bus, ds3231_add, &data[0], 1, true, 20000);
-    // i2c_read_blocking_until(i2c_bus, ds3231_add, &data[1], 1, false, 20000);
-
-    // sprintf(Data, "reg:%x", data[1]);
-    // draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
-
-    // uart_puts(uart0, Data);
-    // data[0] = Control_Reg;
-    // data[1] = 0;
-
-    // i2c_write_blocking_until(i2c_bus, ds3231_add, &data[0], 1, true, 20000);
-    // i2c_read_blocking_until(i2c_bus, ds3231_add, &data[1], 1, false, 20000);
-
-    // sprintf(Data, "reg:%x", data[1]);
-    // draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
-
-    // uart_puts(uart0, Data);
-
-    // SendBuffer(Buffer);
-    // ClearBuffer(Buffer);
-
-    // // sleep_ms(5000);
-
-    // data[1] = (data[1] & (~(1 << 7)));
-
-    // i2c_write_blocking_until(i2c_bus, ds3231_add, data, 2, false, 200);
-
-    // Ds3231_GetTime(&t, Bcd);
-
-    // t.sec = Generic_i2c_Resive(Seconds_Reg);
-
-    // Ds3231_GetTime(&t, Bin);
-
-    // sprintf(Data, "time: %02d:%02d:%02d", t.hour, t.min, t.sec);
-    // draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
-
-    // SendBuffer(Buffer);
-    // ClearBuffer(Buffer);
-
-    // Set minutes to 59
-    uint8_t min_data[2] = {Minutes_Reg, 0x59}; // 59 minutes (valid BCD)
-    Generic_i2c_Send(min_data, 2);
-
-                                               // Set seconds to 50
-    uint8_t sec_data[2] = {Seconds_Reg, 0x50}; // 50 seconds (valid BCD)
-    Generic_i2c_Send(sec_data, 2);
-
-    uint8_t d[2] = {Hours_Reg, 0x11};
-
-    Generic_i2c_Send(d, 2);
-
-    d[1] = Generic_i2c_Resive(Hours_Reg);
-
-    d[1] = d[1] | (1 << 6);
-
-    Generic_i2c_Send(d, 2);
-
-    while (1) {
-        Ds3231_GetTime(&t, Bin);
-        // ds3231_read_time(&t);
-
-        // t.sec = Generic_i2c_Resive(Seconds_Reg);
-
-        sprintf(Data, "Time: %02d:%02d:%02d  %d\r\n", t.hour, t.min, t.sec, t.AM_PM);
+    if (res) {
+        sprintf(Data, "f_chdir(0:): %d", res);
         draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
 
         SendBuffer(Buffer);
         ClearBuffer(Buffer);
 
-        uart_puts(uart0, Data);
-        sleep_ms(50);
+        while (1) {
+            gpio_put(Led, 1);
+            sleep_ms(10);
+
+            gpio_put(Led, 0);
+            sleep_ms(10);
+        }
     }
+
+    FILINFO fno;
+    FIL file;
+    DIR dir;
+    char fname[50] = "0:Log-Output/Temperture-Log-Output.csv";
+
+    // Check if dir exist
+    res = f_stat(fname, &fno);
+
+    switch (res) {
+        case FR_NO_FILE :
+
+            res = f_open(&file, fname, FA_CREATE_ALWAYS | FA_WRITE);
+
+            if (res) {
+                sprintf(Data, "f_open: %d", res);
+                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+                SendBuffer(Buffer);
+                ClearBuffer(Buffer);
+
+                while (1) {
+                    gpio_put(Led, 1);
+                    sleep_ms(10);
+
+                    gpio_put(Led, 0);
+                    sleep_ms(10);
+                }
+            }
+
+            if (! f_printf(&file, "Timestamp,NTC Temperature, Core Temperature, RTC Temperature\n")) {
+                sprintf(Data, "f_printf: %d", res);
+                draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+                SendBuffer(Buffer);
+                ClearBuffer(Buffer);
+
+                while (1) {
+                    gpio_put(Led, 1);
+                    sleep_ms(10);
+
+                    gpio_put(Led, 0);
+                    sleep_ms(10);
+                }
+            }
+            f_close(&file);
+            f_closedir(&dir);
+
+            break;
+
+        case FR_NO_PATH :
+
+            res = f_mkdir("Log-Output");
+            if (res == FR_OK) {
+                // res = f_chdir("0:Log-Output");
+                // if (! res)
+                res = f_open(&file, fname, FA_CREATE_ALWAYS | FA_WRITE);
+
+                if (res) {
+                    sprintf(Data, "f_open: %d", res);
+                    draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+                    SendBuffer(Buffer);
+                    ClearBuffer(Buffer);
+
+                    while (1) {
+                        gpio_put(Led, 1);
+                        sleep_ms(10);
+
+                        gpio_put(Led, 0);
+                        sleep_ms(10);
+                    }
+                }
+
+                if (! f_printf(&file, "Timestamp,NTC Temperature, Core Temperature, RTC Temperature\n")) {
+                    sprintf(Data, "f_printf: %d", res);
+                    draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+                    SendBuffer(Buffer);
+                    ClearBuffer(Buffer);
+
+                    while (1) {
+                        gpio_put(Led, 1);
+                        sleep_ms(10);
+
+                        gpio_put(Led, 0);
+                        sleep_ms(10);
+                    }
+                }
+
+                f_close(&file);
+                f_closedir(&dir);
+            }
+
+            else {
+                sprintf(Data, "f_mkdir: %d", res);
+                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+                SendBuffer(Buffer);
+                ClearBuffer(Buffer);
+
+                while (1) {
+                    gpio_put(Led, 1);
+                    sleep_ms(10);
+
+                    gpio_put(Led, 0);
+                    sleep_ms(10);
+                }
+            }
+
+            break;
+    }
+
+    // f_unmount("0:");
+    // sleep_ms(1000);
+
+    // ds3231_time t = {.hour = 22, .min = 57, .time_format = _24hour_mode};
+    ds3231_time t = {.hour = 3, .min = 37, .time_format = _24hour_mode, .AM_PM = AM};
+
+    ds3231_init d = {.INT_SQW_Function = Intrupt, .Osc_onBat = 1, .SquareWaveFerq = _1hz, .SqWave_onBat = 0};
+    Ds3231_Init(&d);
+
+    Ds3231_SetTime(&t, Bin);
+
+    res = f_open(&file, fname, FA_OPEN_APPEND | FA_WRITE);
+
+    if (res) {
+        sprintf(Data, "f_open: %d", res);
+        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+        SendBuffer(Buffer);
+        ClearBuffer(Buffer);
+
+        while (1) {
+            gpio_put(Led, 1);
+            sleep_ms(10);
+
+            gpio_put(Led, 0);
+            sleep_ms(10);
+        }
+    }
+
+    uint8_t last_sec = 0;
+    while (1) {
+        Ds3231_GetTime(&t, Bin);
+
+        //// Core temperture start
+        adc_select_input(4);
+        ADC_raw     = median_update(&Core_ADC, adc_read());
+        ADC_Voltage = conversion_factor * ADC_raw;
+        Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
+
+        //// NTC temperture start
+        adc_select_input(0);
+        temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
+
+        sprintf(Data, "CoreT:%0.1fC NTCT:%0.0fC", Core_Temp, temp);
+        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+        // t.sec = Generic_i2c_Read(Seconds_Reg);
+        if (t.time_format == _12hour_mode) {
+            if (t.AM_PM)
+                sprintf(Data, "Time: %02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "PM");
+            else
+                sprintf(Data, "Time: %02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "AM");
+        }
+        else {
+            sprintf(Data, "Time: %02d:%02d:%02d\r\n", t.hour, t.min, t.sec);
+        }
+
+        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+        Ds3231_Print_Temp(Ds3231_Read_Temp(), Data);
+
+        // sprintf(Data, "Temp: %02d\r\n", Ds3231_Read_Temp());
+        draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        SendBuffer(Buffer);
+        ClearBuffer(Buffer);
+
+        // uart_puts(uart0, Data);
+        // sleep_ms(100);
+
+        // sprintf(Data,  "%02d:%02d:%02d, %02d\n", t.hour, t.min, t.sec, Ds3231_Get_Temp_Integer(Ds3231_Read_Temp()));
+        if (last_sec != t.min)
+            f_printf(&file, "%02d:%02d:%02d,%02d C,%02d C,%02u.%02d C\n", t.hour, t.min, t.sec, (int8_t) temp, (int8_t) Core_Temp,
+                     Ds3231_Get_Temp_Integer(Ds3231_Read_Temp()), Ds3231_Get_Temp_Fraction(Ds3231_Read_Temp()));
+
+        if (gpio_get(Button)) {
+            break;
+        }
+
+        last_sec = t.min;
+    }
+
+    gpio_put(Led, 1);
+    f_close(&file);
+
+    while (1)
+        ;
 
     while (1) {
         //// Core temperture start

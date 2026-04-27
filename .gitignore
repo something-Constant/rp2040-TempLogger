@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 __pycache__/
+Test/
 
 # Ignore a specific file
 pico_sdk_import.cmake

@@ -16,7 +16,7 @@
         {
             "type": "shell",
             "label": "Build Cmake",
-            "command": "cd '${workspaceFolder}'; cmake --build ./build --fresh",
+            "command": "cd '${workspaceFolder}'; cmake  --build ./build ",
             "problemMatcher": []
         },
         {

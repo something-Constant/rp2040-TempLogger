@@ -29,6 +29,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     physical-api
     fatfs
     ds3231
+    BCD_Conversion
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
