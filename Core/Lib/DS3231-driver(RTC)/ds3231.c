@@ -13,10 +13,10 @@ void Ds3231_Init(ds3231_init *data) {
     uint8_t buffer[2] = {Control_Reg, 0};
 
     if (data->INT_SQW_Function == Intrupt) {
-        CLEAR_BIT(buffer[1], Control_INTCN_Mask);
+        SET_BIT(buffer[1], Control_INTCN_Mask);
     }
     else {
-        SET_BIT(buffer[1], Control_INTCN_Mask);
+        CLEAR_BIT(buffer[1], Control_INTCN_Mask);
 
         switch (data->SquareWaveFerq) {
             case _1hz :
@@ -622,7 +622,6 @@ int16_t Ds3231_Read_Temp() {
 
 // Get integer part
 int8_t Ds3231_Get_Temp_Integer(int16_t fixed_temp) { return (int8_t) (fixed_temp >> 2); }
-
 // Get fractional part (returns 0, 25, 50, or 75)
 uint8_t Ds3231_Get_Temp_Fraction(int16_t fixed_temp) {
     uint8_t temp_lookup[4] = {0, 25, 50, 75};

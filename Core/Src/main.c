@@ -41,12 +41,18 @@ ds3231_init in = {.INT_SQW_Function = Intrupt, .Osc_onBat = 1, .SquareWaveFerq =
 
 uint8_t last_sec = 0;
 
+ds3231_Alarm1 ds_alarm = {.time_format = _24hour_mode, .A1_hour = 21, .A1_min = 38};
+
 int main() {
     init();
 
     Ds3231_Init(&in);
     Ds3231_SetTime(&t, Bin);
     Ds3231_SetDate(&d, Bin);
+
+    Ds3231_SetAlarm1(&ds_alarm, sec_min_match, Bin);
+    Ds3231_Reset_Alarm_Flag(Alarm1);
+    Ds3231_SetAlarm_Interrupt(Alarm1, 1);
 
     while (1) {
         Ds3231_GetTime(&t, Bin);
@@ -65,7 +71,6 @@ int main() {
         sprintf(Data, "CoreT:%0.1fC NTCT:%0.0fC", Core_Temp, temp);
         draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
 
-        // t.sec = Generic_i2c_Read(Seconds_Reg);
         if (t.time_format == _12hour_mode) {
             if (t.AM_PM)
                 sprintf(Data, "Time: %02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "PM");
@@ -87,16 +92,6 @@ int main() {
         SendBuffer(Buffer);
         ClearBuffer(Buffer);
         uart_puts(uart0, Data);
-
-        // if (last_sec != t.min)
-        //     f_printf(&file, "%02d:%02d:%02d,%02d C,%02d C,%02u.%02d C\n", t.hour, t.min, t.sec, (int8_t) temp, (int8_t) Core_Temp,
-        //              Ds3231_Get_Temp_Integer(Ds3231_Read_Temp()), Ds3231_Get_Temp_Fraction(Ds3231_Read_Temp()));
-
-        // if (gpio_get(Button)) {
-        //     break;
-        // }
-
-        // last_sec = t.min;
     }
 
     gpio_put(Led, 1);
