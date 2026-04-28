@@ -67,6 +67,12 @@
 #define MSB_Temp_Reg 0x11U
 #define LSB_Temp_Reg 0x12U
 
+
+/// @brief  LSB_Temp_Reg bit masks
+#define Alarm_AXMX_Mask 0x80U
+#define Alarm_DY_DT_Mask 0x40U
+
+
 /// @brief  Control_Reg bit masks
 #define Control_A1IE_Mask 0x01U
 #define Control_A2IE_Mask 0x02U
@@ -138,6 +144,8 @@ typedef struct {
     uint8_t A1_hour;
     uint8_t A1_day_w;
     uint8_t A1_day;
+    Time_Format time_format;
+    Cycle AM_PM;
 } ds3231_Alarm1;
 
 typedef struct {
@@ -145,6 +153,8 @@ typedef struct {
     uint8_t A2_hour;
     uint8_t A2_day_w;
     uint8_t A2_day;
+    Time_Format time_format;
+    Cycle AM_PM;
 } ds3231_Alarm2;
 
 typedef struct {
@@ -165,8 +175,8 @@ void Ds3231_SetDate(ds3231_date *date, DateFormat format);
 void Ds3231_GetTime(ds3231_time *time, DateFormat format);
 void Ds3231_GetDate(ds3231_date *date, DateFormat format);
 
-void Ds3231_SetAlarm1(ds3231_Alarm1 *alarm1, Alarm1_RATE period);
-void Ds3231_SetAlarm2(ds3231_Alarm2 *alarm2, Alarm2_RATE period);
+void Ds3231_SetAlarm1(ds3231_Alarm1 *alarm1, Alarm1_RATE period, DateFormat format);
+void Ds3231_SetAlarm2(ds3231_Alarm2 *alarm2, Alarm2_RATE period, DateFormat format);
 void Ds3231_SetAlarm_Interrupt(Alarm alarm_num, uint8_t status);
 
 /// @brief After Intrupt is set user must clear the flag or the INT\SQW is set until.

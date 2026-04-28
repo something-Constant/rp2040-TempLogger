@@ -68,25 +68,11 @@ void Ds3231_SetTime(ds3231_time *time, DateFormat format) {
         if (time->time_format == _24hour_mode) {
             buffer[3] = (time->hour & 0x3FU);
 
-            // buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
-
-            // if (time->hour >= 10U) {
-            //     if (time->hour >= 20U)
-            //         buffer[3] |= (1U << 5U);
-            //     else
-            //         buffer[3] |= (1U << 4U);
-            // }
-
             CLEAR_BIT(buffer[3], Time_Format_Mask);
         }
 
         else {
             buffer[3] = (time->hour & 0x1FU);
-
-            // buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
-
-            // if (time->hour >= 10U)
-            //     buffer[3] |= (1U << 4U);
 
             if (time->AM_PM == AM)
                 CLEAR_BIT(buffer[3], 0x20U);
@@ -105,24 +91,10 @@ void Ds3231_SetTime(ds3231_time *time, DateFormat format) {
         if (time->time_format == _24hour_mode) {
             buffer[3] = (BIN2BCD(time->hour) & 0x3FU);
 
-            // buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
-
-            // if (time->hour >= 10U) {
-            //     if (time->hour >= 20U)
-            //         buffer[3] |= (1U << 5U);
-            //     else
-            //         buffer[3] |= (1U << 4U);
-            // }
-
             CLEAR_BIT(buffer[3], Time_Format_Mask);
         }
         else {
             buffer[3] = (BIN2BCD(time->hour) & 0x1FU);
-
-            // buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
-
-            // if (time->hour >= 10U)
-            //     buffer[3] |= (1U << 4U);
 
             if (time->AM_PM == AM)
                 buffer[3] &= ~(1U << 5U);
@@ -251,8 +223,226 @@ void Ds3231_GetDate(ds3231_date *date, DateFormat format) {
     }
 }
 
-void Ds3231_SetAlarm1(ds3231_Alarm1 *alarm1, Alarm1_RATE period);
-void Ds3231_SetAlarm2(ds3231_Alarm2 *alarm2, Alarm2_RATE period);
+void Ds3231_SetAlarm1(ds3231_Alarm1 *alarm1, Alarm1_RATE period, DateFormat format) {
+    uint8_t buffer[6] = {Alarm1_Seconds_Reg, 0, 0, 0, 0};
+
+    if (format == Bcd) {
+        buffer[1] = (alarm1->A1_sec & 0x7FU);
+        buffer[2] = (alarm1->A1_min & 0x7FU);
+
+        if (period == sec_min_hour_day_match) {
+            buffer[4] = (alarm1->A1_day & 0x3FU);
+        }
+        else if (period == sec_min_hour_day_w_match) {
+            buffer[4] = (alarm1->A1_day_w & 0x0FU);
+        }
+
+        if (alarm1->time_format == _24hour_mode) {
+            buffer[3] = (alarm1->A1_hour & 0x3FU);
+
+            CLEAR_BIT(buffer[3], Time_Format_Mask);
+        }
+
+        // _12hour_mode
+        else {
+            buffer[3] = (alarm1->A1_hour & 0x1FU);
+
+            if (alarm1->AM_PM == AM)
+                CLEAR_BIT(buffer[3], 0x20U);
+            else
+                SET_BIT(buffer[3], 0x20U);
+
+            SET_BIT(buffer[3], Time_Format_Mask);
+        }
+    }
+
+    /// format == Bin
+    else {
+        buffer[1] = BIN2BCD(alarm1->A1_sec & 0x7FU);
+        buffer[2] = BIN2BCD(alarm1->A1_min & 0x7FU);
+
+        if (period == sec_min_hour_day_match) {
+            buffer[4] = BIN2BCD(alarm1->A1_day & 0x3FU);
+        }
+        else if (period == sec_min_hour_day_w_match) {
+            buffer[4] = BIN2BCD(alarm1->A1_day_w & 0x0FU);
+        }
+        if (alarm1->time_format == _24hour_mode) {
+            buffer[3] = BIN2BCD(alarm1->A1_hour & 0x3FU);
+
+            CLEAR_BIT(buffer[3], Time_Format_Mask);
+        }
+
+        // _12hour_mode
+        else {
+            buffer[3] = BIN2BCD(alarm1->A1_hour & 0x1FU);
+
+            if (alarm1->AM_PM == AM)
+                CLEAR_BIT(buffer[3], 0x20U);
+            else
+                SET_BIT(buffer[3], 0x20U);
+
+            SET_BIT(buffer[3], Time_Format_Mask);
+        }
+    }
+
+    switch (period) {
+        case per_sec :
+            SET_BIT(buffer[1], Alarm_AXMX_Mask);
+            SET_BIT(buffer[2], Alarm_AXMX_Mask);
+            SET_BIT(buffer[3], Alarm_AXMX_Mask);
+            SET_BIT(buffer[4], Alarm_AXMX_Mask);
+
+            break;
+
+        case sec_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            SET_BIT(buffer[2], Alarm_AXMX_Mask);
+            SET_BIT(buffer[3], Alarm_AXMX_Mask);
+            SET_BIT(buffer[4], Alarm_AXMX_Mask);
+
+            break;
+
+        case sec_min_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[2], Alarm_AXMX_Mask);
+            SET_BIT(buffer[3], Alarm_AXMX_Mask);
+            SET_BIT(buffer[4], Alarm_AXMX_Mask);
+
+            break;
+
+        case sec_min_hour_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[2], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[3], Alarm_AXMX_Mask);
+            SET_BIT(buffer[4], Alarm_AXMX_Mask);
+
+            break;
+
+        case sec_min_hour_day_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[2], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[3], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[4], Alarm_AXMX_Mask | Alarm_DY_DT_Mask);
+
+            break;
+
+        case sec_min_hour_day_w_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[2], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[3], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[4], Alarm_AXMX_Mask);
+
+            SET_BIT(buffer[4], Alarm_DY_DT_Mask);
+            break;
+    }
+
+    Generic_i2c_Write(buffer, 5U);
+}
+
+void Ds3231_SetAlarm2(ds3231_Alarm2 *alarm2, Alarm2_RATE period, DateFormat format) {
+    uint8_t buffer[4] = {Alarm2_Minutes_Reg, 0, 0, 0};
+
+    if (format == Bcd) {
+        buffer[1] = (alarm2->A2_min & 0x7FU);
+
+        if (period == min_hour_day_match) {
+            buffer[4] = (alarm2->A2_day & 0x3FU);
+        }
+        else if (period == min_hour_day_w_match) {
+            buffer[3] = (alarm2->A2_day_w & 0x0FU);
+        }
+
+        if (alarm2->time_format == _24hour_mode) {
+            buffer[2] = (alarm2->A2_hour & 0x3FU);
+
+            CLEAR_BIT(buffer[2], Time_Format_Mask);
+        }
+
+        // _12hour_mode
+        else {
+            buffer[2] = (alarm2->A2_hour & 0x1FU);
+
+            if (alarm2->AM_PM == AM)
+                CLEAR_BIT(buffer[2], 0x20U);
+            else
+                SET_BIT(buffer[2], 0x20U);
+
+            SET_BIT(buffer[2], Time_Format_Mask);
+        }
+    }
+
+    /// format == Bin
+    else {
+        buffer[1] = BIN2BCD(alarm2->A2_min & 0x7FU);
+
+        if (period == min_hour_day_match) {
+            buffer[4] = BIN2BCD(alarm2->A2_day & 0x3FU);
+        }
+        else if (period == min_hour_day_w_match) {
+            buffer[3] = BIN2BCD(alarm2->A2_day_w & 0x0FU);
+        }
+
+        if (alarm2->time_format == _24hour_mode) {
+            buffer[2] = BIN2BCD(alarm2->A2_hour & 0x3FU);
+
+            CLEAR_BIT(buffer[2], Time_Format_Mask);
+        }
+
+        // _12hour_mode
+        else {
+            buffer[2] = BIN2BCD(alarm2->A2_hour & 0x1FU);
+
+            if (alarm2->AM_PM == AM)
+                CLEAR_BIT(buffer[2], 0x20U);
+            else
+                SET_BIT(buffer[2], 0x20U);
+
+            SET_BIT(buffer[2], Time_Format_Mask);
+        }
+    }
+
+    switch (period) {
+        case per_min :
+            SET_BIT(buffer[1], Alarm_AXMX_Mask);
+            SET_BIT(buffer[2], Alarm_AXMX_Mask);
+            SET_BIT(buffer[3], Alarm_AXMX_Mask);
+
+            break;
+
+        case min_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            SET_BIT(buffer[2], Alarm_AXMX_Mask);
+            SET_BIT(buffer[3], Alarm_AXMX_Mask);
+
+            break;
+
+        case min_hour_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[2], Alarm_AXMX_Mask);
+            SET_BIT(buffer[3], Alarm_AXMX_Mask);
+
+            break;
+
+        case min_hour_day_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[2], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[3], Alarm_AXMX_Mask | Alarm_DY_DT_Mask);
+
+            break;
+
+        case min_hour_day_w_match :
+            CLEAR_BIT(buffer[1], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[2], Alarm_AXMX_Mask);
+            CLEAR_BIT(buffer[3], Alarm_AXMX_Mask);
+
+            SET_BIT(buffer[3], Alarm_DY_DT_Mask);
+
+            break;
+    }
+
+    Generic_i2c_Write(buffer, 4U);
+}
 
 void Ds3231_SetAlarm_Interrupt(Alarm alarm_num, uint8_t status) {
     uint8_t buffer[2] = {Control_Reg, 0};
