@@ -28,13 +28,8 @@
 #include "ff.h"
 #include "fatfs_sd.h"
 
-
-// #include "DS3231-driver(RTC)/ds3231.h"
 #include "ds3231.h"
 
-
-
-// #define spi1 ((spi_inst_t *)spi1_hw)
 #define SD_CS_PIN 9
 
 datetime_t DateTime = {.year = 2026, .month = 4, .day = 26, .hour = 13, .min = 30};

@@ -24,41 +24,7 @@ MDF Core_ADC;
 
 void RTC_Callback();
 
-void ds3231_read(uint8_t reg, uint8_t *data, int len) {
-    // Fixed: use correct function names
-    i2c_write_blocking(i2c0, 0x68, &reg, 1, true);
-    i2c_read_blocking(i2c0, 0x68, data, len, false);
-}
-
-void ds3231_write(uint8_t reg, uint8_t data) {
-    uint8_t buffer[2] = {reg, data};
-    i2c_write_blocking(i2c0, 0x68, buffer, 2, false);
-}
-
-uint8_t bcd2dec(uint8_t bcd) { return ((bcd >> 4) * 10) + (bcd & 0x0F); }
-
-uint8_t dec2bcd(uint8_t dec) { return ((dec / 10) << 4) | (dec % 10); }
-
-void ds3231_read_time(ds3231_time *t) {
-    // uint8_t data[3];
-    // ds3231_read(0x00, data, 3);        // Read sec, min, hour at once
-
-    // t->sec  = bcd2dec(data[0] & 0x7F); // CH bit is bit 7
-    // t->min  = bcd2dec(data[1] & 0x7F); // Mask unused bits
-    // t->hour = bcd2dec(data[2] & 0x3F); // Mask for 24-hour mode
-
-    uint8_t data[2];
-    ds3231_read(Seconds_Reg, data, 1); // Read sec, min, hour at once
-
-    t->sec = data[0];
-
-    ds3231_read(Minutes_Reg, data, 1); // Read sec, min, hour at once
-
-    t->min = data[0];
-    ds3231_read(Hours_Reg, data, 1);   // Read sec, min, hour at once
-
-    t->hour = data[0];
-}
+void init();
 
 // Print temperature
 void Ds3231_Print_Temp(int16_t fixed_temp, uint8_t *buff) {
@@ -68,7 +34,139 @@ void Ds3231_Print_Temp(int16_t fixed_temp, uint8_t *buff) {
     sprintf(buff, "RTC T: %d.%02d°C", integer, fraction);
 }
 
+ds3231_time t = {.hour = 21, .min = 37, .time_format = _24hour_mode, .AM_PM = AM};
+ds3231_date d = {.day_w = 1, .day = 20, .month = 1, .year = 26};
+
+ds3231_init in = {.INT_SQW_Function = Intrupt, .Osc_onBat = 1, .SquareWaveFerq = _1hz, .SqWave_onBat = 0};
+
+uint8_t last_sec = 0;
+
 int main() {
+    init();
+
+    Ds3231_Init(&in);
+    Ds3231_SetTime(&t, Bin);
+    Ds3231_SetDate(&d, Bin);
+
+    while (1) {
+        Ds3231_GetTime(&t, Bin);
+        Ds3231_GetDate(&d, Bin);
+
+        //// Core temperture start
+        adc_select_input(4);
+        ADC_raw     = median_update(&Core_ADC, adc_read());
+        ADC_Voltage = conversion_factor * ADC_raw;
+        Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
+
+        //// NTC temperture start
+        adc_select_input(0);
+        temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
+
+        sprintf(Data, "CoreT:%0.1fC NTCT:%0.0fC", Core_Temp, temp);
+        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+        // t.sec = Generic_i2c_Read(Seconds_Reg);
+        if (t.time_format == _12hour_mode) {
+            if (t.AM_PM)
+                sprintf(Data, "Time: %02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "PM");
+            else
+                sprintf(Data, "Time: %02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "AM");
+        }
+        else {
+            sprintf(Data, "Time: %02d:%02d:%02d\r\n", t.hour, t.min, t.sec);
+        }
+
+        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+        // Ds3231_Print_Temp(Ds3231_Read_Temp(), Data);
+        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        sprintf(Data, "Date: 20%02d/%02d/%02d \r\n", d.year, d.month, d.day);
+        draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        SendBuffer(Buffer);
+        ClearBuffer(Buffer);
+        uart_puts(uart0, Data);
+
+        // if (last_sec != t.min)
+        //     f_printf(&file, "%02d:%02d:%02d,%02d C,%02d C,%02u.%02d C\n", t.hour, t.min, t.sec, (int8_t) temp, (int8_t) Core_Temp,
+        //              Ds3231_Get_Temp_Integer(Ds3231_Read_Temp()), Ds3231_Get_Temp_Fraction(Ds3231_Read_Temp()));
+
+        // if (gpio_get(Button)) {
+        //     break;
+        // }
+
+        // last_sec = t.min;
+    }
+
+    gpio_put(Led, 1);
+    while (1)
+        ;
+
+    while (1) {
+        //// Core temperture start
+        adc_select_input(4);
+        ADC_raw     = median_update(&Core_ADC, adc_read());
+        ADC_Voltage = conversion_factor * ADC_raw;
+        Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
+
+        //// Core temperture end
+
+        //// NTC temperture start
+        adc_select_input(0);
+        temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
+
+        sprintf(Data, "CoreT:%0.1fC  NTCT:%0.0fC", Core_Temp, temp);
+        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+        /// print time
+        rtc_get_datetime(&DateTime);
+        sleep_us(70);
+        sprintf(Data, "time: %02d:%02d:%02d", DateTime.hour, DateTime.min, DateTime.sec);
+        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+        // sprintf(Data, "alarm: %02d:%02d:%02d", rtc_alarm.hour, rtc_alarm.min, rtc_alarm.sec);
+        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        // sprintf(Data, "%10lu KiB total drive space. %10lu KiB available.", tot_sect / 2, fre_sect / 2);
+        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        //// NTC temperture end
+
+        if (gpio_get(Blu_stat_pin) == 1) {
+            // sprintf(Data, "%f\n\r", temp);
+            // uart_puts(uart0, Data);
+
+            gpio_put(Led, 1);
+        }
+        else {
+            gpio_put(Led, 0);
+        }
+
+        SendBuffer(Buffer);
+        ClearBuffer(Buffer);
+    }
+}
+
+void RTC_Callback() {
+    rtc_disable_alarm();
+
+    sprintf(Data, "%f\n\r", temp);
+    uart_puts(uart0, Data);
+
+    rtc_get_datetime(&rtc_alarm);
+    // sleep_us(70);
+
+    rtc_alarm.sec += 30;
+    if (rtc_alarm.sec >= 60) {
+        rtc_alarm.sec -= 60;
+        rtc_alarm.min += 1;
+    }
+
+    rtc_set_alarm(&rtc_alarm, RTC_Callback);
+}
+
+void init() {
     uart_init(uart0, 115200);
     gpio_set_function(0, GPIO_FUNC_UART);
     gpio_set_function(1, GPIO_FUNC_UART);
@@ -143,7 +241,9 @@ int main() {
     adc_select_input(4);
 
     median_init(&Core_ADC, adc_read());
-
+}
+/*
+void sd_init() {
     FATFS fs;
     FATFS *fs_p;
     DWORD fre_clust, fre_sect, tot_sect;
@@ -339,17 +439,6 @@ int main() {
             break;
     }
 
-    // f_unmount("0:");
-    // sleep_ms(1000);
-
-    // ds3231_time t = {.hour = 22, .min = 57, .time_format = _24hour_mode};
-    ds3231_time t = {.hour = 3, .min = 37, .time_format = _24hour_mode, .AM_PM = AM};
-
-    ds3231_init d = {.INT_SQW_Function = Intrupt, .Osc_onBat = 1, .SquareWaveFerq = _1hz, .SqWave_onBat = 0};
-    Ds3231_Init(&d);
-
-    Ds3231_SetTime(&t, Bin);
-
     res = f_open(&file, fname, FA_OPEN_APPEND | FA_WRITE);
 
     if (res) {
@@ -426,66 +515,5 @@ int main() {
 
     while (1)
         ;
-
-    while (1) {
-        //// Core temperture start
-        adc_select_input(4);
-        ADC_raw     = median_update(&Core_ADC, adc_read());
-        ADC_Voltage = conversion_factor * ADC_raw;
-        Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
-
-        //// Core temperture end
-
-        //// NTC temperture start
-        adc_select_input(0);
-        temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
-
-        sprintf(Data, "CoreT:%0.1fC  NTCT:%0.0fC", Core_Temp, temp);
-        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
-
-        /// print time
-        rtc_get_datetime(&DateTime);
-        sleep_us(70);
-        sprintf(Data, "time: %02d:%02d:%02d", DateTime.hour, DateTime.min, DateTime.sec);
-        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
-
-        // sprintf(Data, "alarm: %02d:%02d:%02d", rtc_alarm.hour, rtc_alarm.min, rtc_alarm.sec);
-        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
-
-        // sprintf(Data, "%10lu KiB total drive space. %10lu KiB available.", tot_sect / 2, fre_sect / 2);
-        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
-
-        //// NTC temperture end
-
-        if (gpio_get(Blu_stat_pin) == 1) {
-            // sprintf(Data, "%f\n\r", temp);
-            // uart_puts(uart0, Data);
-
-            gpio_put(Led, 1);
-        }
-        else {
-            gpio_put(Led, 0);
-        }
-
-        SendBuffer(Buffer);
-        ClearBuffer(Buffer);
-    }
 }
-
-void RTC_Callback() {
-    rtc_disable_alarm();
-
-    sprintf(Data, "%f\n\r", temp);
-    uart_puts(uart0, Data);
-
-    rtc_get_datetime(&rtc_alarm);
-    // sleep_us(70);
-
-    rtc_alarm.sec += 30;
-    if (rtc_alarm.sec >= 60) {
-        rtc_alarm.sec -= 60;
-        rtc_alarm.min += 1;
-    }
-
-    rtc_set_alarm(&rtc_alarm, RTC_Callback);
-}
+*/

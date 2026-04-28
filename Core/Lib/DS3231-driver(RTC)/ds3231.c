@@ -62,27 +62,31 @@ void Ds3231_SetTime(ds3231_time *time, DateFormat format) {
     uint8_t buffer[4] = {Seconds_Reg, 0, 0, 0};
 
     if (format == Bcd) {
-        buffer[1] = BIN2BCD(time->sec);
-        buffer[2] = BIN2BCD(time->min);
+        buffer[1] = time->sec;
+        buffer[2] = time->min;
 
         if (time->time_format == _24hour_mode) {
-            buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
+            buffer[3] = (time->hour & 0x3FU);
 
-            if (time->hour >= 10U) {
-                if (time->hour >= 20U)
-                    buffer[3] |= (1U << 5U);
-                else
-                    buffer[3] |= (1U << 4U);
-            }
+            // buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
+
+            // if (time->hour >= 10U) {
+            //     if (time->hour >= 20U)
+            //         buffer[3] |= (1U << 5U);
+            //     else
+            //         buffer[3] |= (1U << 4U);
+            // }
 
             CLEAR_BIT(buffer[3], Time_Format_Mask);
         }
 
         else {
-            buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
+            buffer[3] = (time->hour & 0x1FU);
 
-            if (time->hour >= 10U)
-                buffer[3] |= (1U << 4U);
+            // buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
+
+            // if (time->hour >= 10U)
+            //     buffer[3] |= (1U << 4U);
 
             if (time->AM_PM == AM)
                 CLEAR_BIT(buffer[3], 0x20U);
@@ -99,22 +103,26 @@ void Ds3231_SetTime(ds3231_time *time, DateFormat format) {
         buffer[2] = BIN2BCD(time->min);
 
         if (time->time_format == _24hour_mode) {
-            buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
+            buffer[3] = (BIN2BCD(time->hour) & 0x3FU);
 
-            if (time->hour >= 10U) {
-                if (time->hour >= 20U)
-                    buffer[3] |= (1U << 5U);
-                else
-                    buffer[3] |= (1U << 4U);
-            }
+            // buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
+
+            // if (time->hour >= 10U) {
+            //     if (time->hour >= 20U)
+            //         buffer[3] |= (1U << 5U);
+            //     else
+            //         buffer[3] |= (1U << 4U);
+            // }
 
             CLEAR_BIT(buffer[3], Time_Format_Mask);
         }
         else {
-            buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
+            buffer[3] = (BIN2BCD(time->hour) & 0x1FU);
 
-            if (time->hour >= 10U)
-                buffer[3] |= (1U << 4U);
+            // buffer[3] = (BIN2BCD(time->hour) & 0x0FU);
+
+            // if (time->hour >= 10U)
+            //     buffer[3] |= (1U << 4U);
 
             if (time->AM_PM == AM)
                 buffer[3] &= ~(1U << 5U);
@@ -128,8 +136,36 @@ void Ds3231_SetTime(ds3231_time *time, DateFormat format) {
     Generic_i2c_Write(buffer, 4);
 }
 
-void Ds3231_SetDate(ds3231_date *date, DateFormat format) {}
+void Ds3231_SetDate(ds3231_date *date, DateFormat format) {
+    uint8_t buffer[5] = {Day_Reg, 0, 0, 0, 0};
 
+    if (format == Bcd) {
+        buffer[1] = date->day_w;
+        buffer[2] = date->day;
+        buffer[3] = (date->month & 0x1FU) | (date->century << 7U);
+        buffer[4] = date->year;
+    }
+
+    /// format == Bin
+    else {
+        buffer[1] = BIN2BCD(date->day_w);
+        buffer[2] = BIN2BCD(date->day);
+        buffer[3] = (BIN2BCD(date->month) & 0x1FU) | (date->century << 7U);
+        buffer[4] = BIN2BCD(date->year);
+    }
+
+    Generic_i2c_Write(buffer, 5U);
+}
+
+/**
+ * @brief Read the time with scpecied format of the DS3231
+ *
+ * @param time of ds3231_time type
+ * @param format : _24hour_mode or _12hour_mode
+ *
+ * @warning the first data that is readen is from preivous format(Becuse of prepormans)
+ *          , need two read twoice to aplay the new format. e.g _24hour_mode
+ */
 void Ds3231_GetTime(ds3231_time *time, DateFormat format) {
     uint8_t buffer[3] = {0, 0, 0};
 
@@ -164,21 +200,25 @@ void Ds3231_GetTime(ds3231_time *time, DateFormat format) {
         time->min = BCD2BIN(buffer[1]);
 
         if (time->time_format == _24hour_mode) {
-            time->hour = BCD2BIN(buffer[2] & 0x0FU);
+            time->hour = BCD2BIN(buffer[2] & 0x3FU);
 
-            if ((buffer[2] & _Tens_Hours_Mask) && (! (buffer[2] & _Twoenies_Hours_Mask))) {
-                time->hour += 10;
-            }
+            // time->hour = BCD2BIN(buffer[2] & 0x0FU);
 
-            else if ((! (buffer[2] & _Tens_Hours_Mask)) && (buffer[2] & _Twoenies_Hours_Mask)) {
-                time->hour += 20;
-            }
+            // if ((buffer[2] & _Tens_Hours_Mask) && (! (buffer[2] & _Twoenies_Hours_Mask))) {
+            //     time->hour += 10;
+            // }
+
+            // else if ((! (buffer[2] & _Tens_Hours_Mask)) && (buffer[2] & _Twoenies_Hours_Mask)) {
+            //     time->hour += 20;
+            // }
         }
         else {
-            time->hour = BCD2BIN(buffer[2] & 0x0FU);
+            time->hour = BCD2BIN(buffer[2] & 0x1FU);
 
-            if (buffer[2] & _Tens_Hours_Mask)
-                time->hour += 10;
+            // time->hour = BCD2BIN(buffer[2] & 0x0FU);
+
+            // if (buffer[2] & _Tens_Hours_Mask)
+            //     time->hour += 10;
 
             if (buffer[2] & 0x20U)
                 time->AM_PM = PM;
@@ -188,7 +228,28 @@ void Ds3231_GetTime(ds3231_time *time, DateFormat format) {
     }
 }
 
-void Ds3231_GetDate(ds3231_date *date, DateFormat format);
+void Ds3231_GetDate(ds3231_date *date, DateFormat format) {
+    uint8_t buffer[4] = {0, 0, 0, 0};
+
+    Generic_i2c_Read(Day_Reg, buffer, 4U);
+
+    if (format == Bcd) {
+        date->day_w   = buffer[0];
+        date->day     = buffer[1];
+        date->month   = (0x1FU & buffer[2]);
+        date->century = (0x80U & buffer[2]);
+        date->year    = buffer[3];
+    }
+
+    /// format == Bin
+    else {
+        date->day_w   = BCD2BIN(buffer[0]);
+        date->day     = BCD2BIN(buffer[1]);
+        date->month   = BCD2BIN(0x1FU & buffer[2]);
+        date->century = (0x80U & buffer[2]);
+        date->year    = BCD2BIN(buffer[3]);
+    }
+}
 
 void Ds3231_SetAlarm1(ds3231_Alarm1 *alarm1, Alarm1_RATE period);
 void Ds3231_SetAlarm2(ds3231_Alarm2 *alarm2, Alarm2_RATE period);
@@ -357,7 +418,6 @@ int16_t Ds3231_Read_Temp() {
     Generic_i2c_Read(MSB_Temp_Reg, buffer, 2);
 
     temp = (int16_t) (((int8_t) buffer[0]) << 2);
-
 
     // if (temp >= 0) {
     //     temp += (buffer[1] >> 6) & 0x03;

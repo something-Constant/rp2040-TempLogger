@@ -129,6 +129,7 @@ typedef struct {
     uint8_t day;
     uint8_t month;
     uint8_t year;
+    uint8_t century;
 } ds3231_date;
 
 typedef struct {
