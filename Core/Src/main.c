@@ -41,7 +41,7 @@ ds3231_init in = {.INT_SQW_Function = Intrupt, .Osc_onBat = 1, .SquareWaveFerq =
 
 uint8_t last_sec = 0;
 
-ds3231_Alarm1 ds_alarm = {.time_format = _24hour_mode, .A1_hour = 21, .A1_min = 38};
+ds3231_Alarm1 ds_alarm = {.time_format = _24hour_mode, .A1_hour = 21, .A1_min = 38, .A1_sec = 30};
 
 int main() {
     init();
@@ -50,8 +50,8 @@ int main() {
     Ds3231_SetTime(&t, Bin);
     Ds3231_SetDate(&d, Bin);
 
-    Ds3231_SetAlarm1(&ds_alarm, sec_min_match, Bin);
-    Ds3231_Reset_Alarm_Flag(Alarm1);
+    Ds3231_SetAlarm1(&ds_alarm, sec_match, Bin);
+    // Ds3231_Reset_Alarm_Flag(Alarm1);
     Ds3231_SetAlarm_Interrupt(Alarm1, 1);
 
     while (1) {
@@ -92,6 +92,11 @@ int main() {
         SendBuffer(Buffer);
         ClearBuffer(Buffer);
         uart_puts(uart0, Data);
+
+        if (Ds3231_Read_Alarm_Flag(Alarm1)) {
+            sleep_ms(1000);
+            Ds3231_Reset_Alarm_Flag(Alarm1);
+        }
     }
 
     gpio_put(Led, 1);
