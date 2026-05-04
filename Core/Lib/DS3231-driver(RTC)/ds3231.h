@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 #define ds3231_add 0x68U
-#define i2c_bus i2c0
+#define i2c_bus i2c1
 
 #define negative_sigh 1
 #define posetive_sigh 0

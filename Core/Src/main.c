@@ -7,10 +7,25 @@ uint8_t scale = 1, deph = 1;
 extern uint8_t Buffer[BufferSize];
 char Data[50];
 
-#define SSD1306_I2C_CLK 400000 // 400khz
 #define Led 25
-#define Button 16
-#define Blu_stat_pin 6
+#define Button1 16
+#define Button2 17
+
+#define SSD1306_I2C_CLK 400000 // 400khz
+#define I2C_SDA_PIN 14
+#define I2C_SCL_PIN 15
+
+#define SPI_SCK_PIN 10
+#define SPI_TX_PIN 11
+#define SPI_RX_PIN 12
+#define SPI_CSN_PIN 13
+
+#define NTC_ADC_Channel 0
+#define CoreTemp_ADC_Channel 4
+
+#define NTC_ADC_DMA_Channel 0
+
+uint16_t ADC;
 
 const float conversion_factor = 3.3f / (1 << 12);
 
@@ -23,7 +38,6 @@ MDF NTC_ADC;
 MDF Core_ADC;
 
 void RTC_Callback();
-
 void init();
 
 // Print temperature
@@ -34,41 +48,46 @@ void Ds3231_Print_Temp(int16_t fixed_temp, uint8_t *buff) {
     sprintf(buff, "RTC T: %d.%02d°C", integer, fraction);
 }
 
-ds3231_time t = {.hour = 21, .min = 37, .time_format = _24hour_mode, .AM_PM = AM};
-ds3231_date d = {.day_w = 1, .day = 20, .month = 1, .year = 26};
+ds3231_time t          = {.hour = 21, .min = 37, .time_format = _24hour_mode, .AM_PM = AM};
+ds3231_date d          = {.day_w = 1, .day = 20, .month = 1, .year = 26};
+ds3231_init in         = {.INT_SQW_Function = Intrupt, .Osc_onBat = 1, .SquareWaveFerq = _1hz, .SqWave_onBat = 0};
+ds3231_Alarm1 ds_alarm = {.time_format = _24hour_mode, .A1_hour = 21, .A1_min = 38, .A1_sec = 30};
 
-ds3231_init in = {.INT_SQW_Function = Intrupt, .Osc_onBat = 1, .SquareWaveFerq = _1hz, .SqWave_onBat = 0};
+datetime_t DateTime  = {.year = 2026, .month = 4, .day = 26, .hour = 13, .min = 30};
+datetime_t rtc_alarm = {};
+
+int16_t NTC_ADC2Temperature(uint16_t adc_value);
 
 uint8_t last_sec = 0;
-
-ds3231_Alarm1 ds_alarm = {.time_format = _24hour_mode, .A1_hour = 21, .A1_min = 38, .A1_sec = 30};
 
 int main() {
     init();
 
     Ds3231_Init(&in);
-    Ds3231_SetTime(&t, Bin);
-    Ds3231_SetDate(&d, Bin);
+    // Ds3231_SetTime(&t, Bin);
+    // Ds3231_SetDate(&d, Bin);
 
-    Ds3231_SetAlarm1(&ds_alarm, sec_match, Bin);
+    // Ds3231_SetAlarm1(&ds_alarm, sec_match, Bin);
     // Ds3231_Reset_Alarm_Flag(Alarm1);
-    Ds3231_SetAlarm_Interrupt(Alarm1, 1);
+    // Ds3231_SetAlarm_Interrupt(Alarm1, 1);
 
     while (1) {
         Ds3231_GetTime(&t, Bin);
         Ds3231_GetDate(&d, Bin);
 
-        //// Core temperture start
+        //// Core temperature
         adc_select_input(4);
         ADC_raw     = median_update(&Core_ADC, adc_read());
         ADC_Voltage = conversion_factor * ADC_raw;
-        Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
+        // Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
+        Core_Temp = ((27 - (ADC_Voltage - 0.706) / 0.001721));
 
-        //// NTC temperture start
+        //// NTC temperature
         adc_select_input(0);
-        temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
+        // temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
+        temp = NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read()));
 
-        sprintf(Data, "CoreT:%0.1fC NTCT:%0.0fC", Core_Temp, temp);
+        sprintf(Data, "CoreT:%0.1fC  NTCT:%0.0fC", Core_Temp, temp);
         draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
 
         if (t.time_format == _12hour_mode) {
@@ -91,61 +110,91 @@ int main() {
 
         SendBuffer(Buffer);
         ClearBuffer(Buffer);
-        uart_puts(uart0, Data);
-
-        if (Ds3231_Read_Alarm_Flag(Alarm1)) {
-            sleep_ms(1000);
-            Ds3231_Reset_Alarm_Flag(Alarm1);
-        }
     }
+}
 
-    gpio_put(Led, 1);
-    while (1)
-        ;
+void init() {
+    /// I2C init
+    i2c_init(i2c1, SSD1306_I2C_CLK);
+    gpio_set_function(I2C_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_SDA_PIN);
+    gpio_pull_up(I2C_SCL_PIN);
 
-    while (1) {
-        //// Core temperture start
-        adc_select_input(4);
-        ADC_raw     = median_update(&Core_ADC, adc_read());
-        ADC_Voltage = conversion_factor * ADC_raw;
-        Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
+    /// SPI init
+    spi_init(spi1, 2000000);
+    spi_set_format(spi1, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
 
-        //// Core temperture end
+    gpio_set_function(SPI_SCK_PIN, GPIO_FUNC_SPI);
+    gpio_set_function(SPI_TX_PIN, GPIO_FUNC_SPI);
+    gpio_set_function(SPI_RX_PIN, GPIO_FUNC_SPI);
 
-        //// NTC temperture start
-        adc_select_input(0);
-        temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
+    gpio_init(SPI_CSN_PIN);
+    gpio_set_dir(SPI_CSN_PIN, GPIO_OUT);
+    gpio_pull_up(SPI_CSN_PIN);
 
-        sprintf(Data, "CoreT:%0.1fC  NTCT:%0.0fC", Core_Temp, temp);
-        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+    /// RTC init
+    // rtc_init();
+    // rtc_set_datetime(&DateTime);
+    // rtc_get_datetime(&DateTime);
+    // sleep_us(64);
 
-        /// print time
-        rtc_get_datetime(&DateTime);
-        sleep_us(70);
-        sprintf(Data, "time: %02d:%02d:%02d", DateTime.hour, DateTime.min, DateTime.sec);
-        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+    // rtc_enable_alarm();
 
-        // sprintf(Data, "alarm: %02d:%02d:%02d", rtc_alarm.hour, rtc_alarm.min, rtc_alarm.sec);
-        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+    // rtc_get_datetime(&rtc_alarm);
+    // sleep_us(70);
 
-        // sprintf(Data, "%10lu KiB total drive space. %10lu KiB available.", tot_sect / 2, fre_sect / 2);
-        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+    // rtc_alarm.sec += 30;
+    // if (rtc_alarm.sec >= 60) {
+    //     rtc_alarm.sec -= 60;
+    //     rtc_alarm.min += 1;
+    // }
 
-        //// NTC temperture end
+    // rtc_set_alarm(&rtc_alarm, RTC_Callback);
 
-        if (gpio_get(Blu_stat_pin) == 1) {
-            // sprintf(Data, "%f\n\r", temp);
-            // uart_puts(uart0, Data);
+    // Gpio Inint
+    gpio_init(Led);
+    gpio_set_dir(Led, GPIO_OUT);
+    gpio_put(Led, 0);
 
-            gpio_put(Led, 1);
-        }
-        else {
-            gpio_put(Led, 0);
-        }
+    gpio_init(Button1);
+    gpio_set_dir(Button1, GPIO_IN);
+    gpio_pull_up(Button1);
 
-        SendBuffer(Buffer);
-        ClearBuffer(Buffer);
-    }
+    gpio_init(Button2);
+    gpio_set_dir(Button2, GPIO_IN);
+    gpio_pull_up(Button2);
+
+    // ADC Inint
+    adc_init();
+    adc_set_clkdiv(48000); // 48,000,000/48,000 : 1,000 sps
+    adc_gpio_init(26);
+    adc_set_temp_sensor_enabled(true);
+
+    // DMA Inint
+    // dma_channel_claim(NTC_ADC_DMA_Channel);
+
+    // dma_channel_config NTC_ADC_DMA;
+
+    // dma_channel_configure(NTC_ADC_DMA_Channel, &NTC_ADC_DMA, &ADC, adc_add, 1, false);
+
+    // dma_channel_set_config(NTC_ADC_DMA_Channel, &NTC_ADC_DMA, false);
+
+    // LCD Init
+    LCD_init();
+    SetXY(0, 0);
+    ClearLcd(0, 0);
+
+    // NTC ADC 0 input filters init
+    adc_select_input(0);
+    median_init(&NTC_ADC, adc_read());
+    moving_average_init(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())), 4, 16);
+
+    // Core temperature ADC 4 input filters init
+    adc_select_input(4);
+    ADC_raw     = median_update(&Core_ADC, adc_read());
+    ADC_Voltage = conversion_factor * ADC_raw;
+    moving_average_init(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0), 4, 16);
 }
 
 void RTC_Callback() {
@@ -166,82 +215,40 @@ void RTC_Callback() {
     rtc_set_alarm(&rtc_alarm, RTC_Callback);
 }
 
-void init() {
-    uart_init(uart0, 115200);
-    gpio_set_function(0, GPIO_FUNC_UART);
-    gpio_set_function(1, GPIO_FUNC_UART);
+int16_t NTC_ADC2Temperature(uint16_t adc_value) {
+    int8_t NTC_table[10] = {-36, -14, 0, 10, 20, 31, 45, 68, 165};
 
-    gpio_init(Blu_stat_pin);
-    gpio_set_dir(Blu_stat_pin, GPIO_IN);
-    gpio_pull_down(Blu_stat_pin);
-
-    i2c_init(i2c_default, SSD1306_I2C_CLK);
-    gpio_set_function(PICO_DEFAULT_I2C_SDA_PIN, GPIO_FUNC_I2C);
-    gpio_set_function(PICO_DEFAULT_I2C_SCL_PIN, GPIO_FUNC_I2C);
-    gpio_pull_up(PICO_DEFAULT_I2C_SDA_PIN);
-    gpio_pull_up(PICO_DEFAULT_I2C_SCL_PIN);
-
-    /// SPI init
-    spi_init(spi1, 2000000);
-    spi_set_format(spi1, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
-
-    gpio_set_function(10, GPIO_FUNC_SPI);
-    gpio_set_function(11, GPIO_FUNC_SPI);
-    gpio_set_function(12, GPIO_FUNC_SPI);
-    // gpio_set_function(13, GPIO_FUNC_SPI);
-
-    gpio_init(SD_CS_PIN);
-    gpio_set_dir(SD_CS_PIN, GPIO_OUT);
-    gpio_pull_up(SD_CS_PIN);
-
-    /// RTC init
-    rtc_init();
-    rtc_set_datetime(&DateTime);
-    rtc_get_datetime(&DateTime);
-    sleep_us(64);
-
-    rtc_enable_alarm();
-
-    rtc_get_datetime(&rtc_alarm);
-    sleep_us(70);
-
-    rtc_alarm.sec += 30;
-    if (rtc_alarm.sec >= 60) {
-        rtc_alarm.sec -= 60;
-        rtc_alarm.min += 1;
+    // Clamp ADC value to valid range
+    if (adc_value >= 4095) {
+        return NTC_table[8];
     }
 
-    // rtc_set_alarm(&rtc_alarm, RTC_Callback);
+    // Calculate index (0-7)
+    uint8_t index = adc_value >> 9; // Divide by 512 highest result is 7
 
-    gpio_init(Led);
-    gpio_set_dir(Led, GPIO_OUT);
-    gpio_put(Led, 0);
+    // Safety check (should not happen with proper ADC range)
+    if (index >= 8) {
+        index = 7;
+    }
 
-    gpio_init(Button);
-    gpio_set_dir(Button, GPIO_IN);
-    gpio_pull_down(Button);
+    // Get interpolation points
+    int8_t p1 = NTC_table[index];
+    int8_t p2 = NTC_table[index + 1];
 
-    // ADC Inint
-    adc_init();
-    adc_set_clkdiv(48000); // 48,000,000/48,000 : 1,000 sps
-    adc_gpio_init(26);
-    adc_set_temp_sensor_enabled(true);
+    // Calculate offset within the section (0-511)
 
-    // LCD Init
-    LCD_init();
-    SetXY(0, 0);
-    ClearLcd(0, 0);
+    uint16_t offset = adc_value & 0x01FF;
 
-    adc_select_input(0);
-    moving_average_init(&mof, NTC_ADC2Temperature(adc_read()), 4, 16);
-    median_init(&NTC_ADC, adc_read());
+    // Interpolate with rounding for better accuracy
+    // Formula: p1 + ((p2 - p1) * offset + 256) / 512
+    int16_t diff = p2 - p1;
 
-    moving_average_init(&Cor, 0, 4, 16);
+    // Use 64-bit to prevent overflow
+    int32_t temp = (int32_t) diff * offset + 256;
 
-    adc_select_input(4);
-
-    median_init(&Core_ADC, adc_read());
+    return p1 + (int32_t) (temp >> 9);
 }
+
 /*
 void sd_init() {
     FATFS fs;
@@ -330,7 +337,7 @@ void sd_init() {
     FILINFO fno;
     FIL file;
     DIR dir;
-    char fname[50] = "0:Log-Output/Temperture-Log-Output.csv";
+    char fname[50] = "0:Log-Output/temperature-Log-Output.csv";
 
     // Check if dir exist
     res = f_stat(fname, &fno);
@@ -461,13 +468,13 @@ void sd_init() {
     while (1) {
         Ds3231_GetTime(&t, Bin);
 
-        //// Core temperture start
+        //// Core temperature start
         adc_select_input(4);
         ADC_raw     = median_update(&Core_ADC, adc_read());
         ADC_Voltage = conversion_factor * ADC_raw;
         Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
 
-        //// NTC temperture start
+        //// NTC temperature start
         adc_select_input(0);
         temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
 

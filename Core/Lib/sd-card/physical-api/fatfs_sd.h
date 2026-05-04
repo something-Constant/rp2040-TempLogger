@@ -8,7 +8,7 @@
 #include "diskio.h"
 #include "ff.h"
 
-#define SD_CS_PIN 9
+#define SD_CS_PIN 13
 
 
 

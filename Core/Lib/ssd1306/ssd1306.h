@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define LCD_128x32
-#define I2Ch i2c_default
+#define I2Ch i2c1
 
 typedef unsigned char byte;
 typedef unsigned int word;
