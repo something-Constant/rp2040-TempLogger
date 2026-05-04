@@ -1,49 +1,25 @@
 #ifndef BUTTON_H_
 #define BUTTON_H_
 
-#include "stdint.h"
+#include <stdint.h>
 
-typedef struct {
-    uint32_t Deb_Counter;
-    uint8_t key_Press_Flag, key_Hold_Flagm, key_DPress_Flag;
-    uint8_t Deb_Press, Deb_Hold, Key_flag, en_flag;
 
-} key;
+#define Low 0U
+#define High 1U
 
-void KeyDetect(key *root, uint32_t input) {
-    if (root->en_flag == 0U) {
-        if (input == 0U) {
-            root->Deb_Counter++;
+#define input_active Low
 
-            if ((root->Deb_Counter > root->Deb_Hold) && (root->Key_flag == 0U)) {
-                root->key_Hold_Flag = 1;
-                root->Key_flag      = 1;
-                root->Deb_Counter   = 0;
-            }
-        }
-        else {
-            if ((root->Deb_Counter > root->Deb_Press) && (root->Key_flag == 0U)) {
-                root->key_Press_Flag = 1;
-            }
-            else
-                root->Key_flag = 0;
+struct _key {
+    uint8_t Deb_Counter;
+    uint8_t Timeout_Counter, Timeout_Hold;
+    uint8_t key_Hold_Flag;
+    uint8_t Deb_Press, Deb_Hold, Deb_DPress, output;
+};
+typedef struct _key key;
 
-            root->Deb_Counter = 0;
-        }
-    }
-    else
-        return;
-}
+enum _Key_State { NotActive, key_Press, key_DPress, key_Hold };
+typedef enum _Key_State Key_State;
 
-// if (Rotary_key.key_Press_Flag) {
-//     Rotary_key.key_Press_Flag = 0;
-
-//     CurrentMenu = MAIN;
-// }
-// else if (Rotary_key.key_Hold_Flag) {
-//     Rotary_key.key_Hold_Flag = 0;
-
-//     CurrentMenu = MAIN;
-// }
+Key_State KeyDetect(key *root, uint32_t input, uint8_t status);
 
 #endif

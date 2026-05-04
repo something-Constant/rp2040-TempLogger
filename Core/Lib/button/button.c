@@ -1,28 +1,49 @@
-#include "stdint.h"
+#include "button.h"
 
-typedef struct {
-    uint32_t Deb_Counter;
-    uint8_t key_Press_Flag, key_Hold_Flagm, key_DPress_Flag;
-    uint8_t Deb_Press, Deb_Hold, Key_flag, en_flag;
+Key_State KeyDetect(key *root, uint32_t input, uint8_t status) {
+    if (status == 1U) {
+        if (input == input_active) {
+            root->Deb_Counter++;
+            root->Timeout_Hold = 0;
 
-} key;
+            if (root->Deb_Counter > root->Deb_Hold) {
+                root->key_Hold_Flag   = 1;
+                root->Timeout_Counter = 0;
+                root->Deb_Counter     = 0;
+                root->output          = key_Hold;
+            }
+        }
+        else {
+            if ((root->Deb_Counter > root->Deb_Press) && (root->key_Hold_Flag != 1)) {
+                root->Timeout_Counter++;
 
-enum KeyFlag { key_Press, key_Hold, key_DPress };
-typedef enum KeyFlag Key_State;
+                if (root->Timeout_Counter > root->Deb_DPress) {
+                    // root->key_Press_Flag  = 1;
+                    root->Deb_Counter     = 0;
+                    root->Timeout_Counter = 0;
+                    root->output          = key_Press;
+                }
 
-Key_State i;
+                else if ((root->Timeout_Counter > 1) && (root->Timeout_Hold != root->Deb_Counter)) {
+                    // root->key_DPress_Flag = 1;
+                    root->Deb_Counter     = 0;
+                    root->Timeout_Counter = 0;
+                    root->output          = key_DPress;
+                }
 
-i = key_DPress;
+                root->Timeout_Hold = root->Deb_Counter;
+            }
+            else {
+                root->Timeout_Counter = 0;
+                root->Deb_Counter     = 0;
+                root->Timeout_Hold    = 0;
+                root->key_Hold_Flag   = 0;
+            }
+        }
 
-void KeyDetect(key *root, uint32_t input) {}
-
-// if (Rotary_key.key_Press_Flag) {
-//     Rotary_key.key_Press_Flag = 0;
-
-//     CurrentMenu = MAIN;
-// }
-// else if (Rotary_key.key_Hold_Flag) {
-//     Rotary_key.key_Hold_Flag = 0;
-
-//     CurrentMenu = MAIN;
-// }
+        return root->output;
+    }
+    else {
+        return NotActive;
+    }
+}
