@@ -26,6 +26,7 @@ char Data[50];
 #define NTC_ADC_DMA_Channel 0
 
 uint16_t ADC;
+uint16_t ADC_Buffer[8];
 
 const float conversion_factor = 3.3f / (1 << 12);
 
@@ -59,6 +60,8 @@ datetime_t rtc_alarm = {};
 int16_t NTC_ADC2Temperature(uint16_t adc_value);
 
 uint8_t last_sec = 0;
+int dma_adc;
+int dma_adc_controll;
 
 int main() {
     init();
@@ -75,20 +78,22 @@ int main() {
         Ds3231_GetTime(&t, Bin);
         Ds3231_GetDate(&d, Bin);
 
-        //// Core temperature
-        adc_select_input(4);
-        ADC_raw     = median_update(&Core_ADC, adc_read());
-        ADC_Voltage = conversion_factor * ADC_raw;
-        // Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
-        Core_Temp = ((27 - (ADC_Voltage - 0.706) / 0.001721));
+        /*
+                //// Core temperature
+                adc_select_input(4);
+                ADC_raw     = median_update(&Core_ADC, adc_read());
+                ADC_Voltage = conversion_factor * ADC_raw;
+                // Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
+                Core_Temp = ((27 - (ADC_Voltage - 0.706) / 0.001721));
 
-        //// NTC temperature
-        adc_select_input(0);
-        // temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
-        temp = NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read()));
+                //// NTC temperature
+                adc_select_input(0);
+                // temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
+                temp = NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read()));
 
-        sprintf(Data, "CoreT:%0.1fC  NTCT:%0.0fC", Core_Temp, temp);
-        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+                sprintf(Data, "CoreT:%0.1fC  NTCT:%0.0fC", Core_Temp, temp);
+                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+        */
 
         if (t.time_format == _12hour_mode) {
             if (t.AM_PM)
@@ -101,15 +106,35 @@ int main() {
         }
 
         draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+        // sprintf(Data, "Date: 20%02d/%02d/%02d \r\n", d.year, d.month, d.day);
+        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
 
         // Ds3231_Print_Temp(Ds3231_Read_Temp(), Data);
         // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
 
-        sprintf(Data, "Date: 20%02d/%02d/%02d \r\n", d.year, d.month, d.day);
-        draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+        // adc_run(false);
+        // adc_fifo_drain();
+        // dma_channel_abort(dma_adc);
+
+        // adc_select_input(0); // Select ADC0
+
+        // dma_channel_start(dma_adc);
+        // adc_run(true);
+
+        // dma_channel_wait_for_finish_blocking(dma_adc);
+
+        // temp = NTC_ADC2Temperature(median_update(&NTC_ADC, ADC_Buffer[0]));
+
+        // sprintf(Data, "NTC T:%0.0fC", temp);
+        // draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+        // sprintf(Data, "[0]: %x", ADC_Buffer[0]);
+        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        // sprintf(Data, "[1]: %x", ADC_Buffer[1]);
+        // draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
 
         SendBuffer(Buffer);
-        ClearBuffer(Buffer);
     }
 }
 
@@ -133,25 +158,6 @@ void init() {
     gpio_set_dir(SPI_CSN_PIN, GPIO_OUT);
     gpio_pull_up(SPI_CSN_PIN);
 
-    /// RTC init
-    // rtc_init();
-    // rtc_set_datetime(&DateTime);
-    // rtc_get_datetime(&DateTime);
-    // sleep_us(64);
-
-    // rtc_enable_alarm();
-
-    // rtc_get_datetime(&rtc_alarm);
-    // sleep_us(70);
-
-    // rtc_alarm.sec += 30;
-    // if (rtc_alarm.sec >= 60) {
-    //     rtc_alarm.sec -= 60;
-    //     rtc_alarm.min += 1;
-    // }
-
-    // rtc_set_alarm(&rtc_alarm, RTC_Callback);
-
     // Gpio Inint
     gpio_init(Led);
     gpio_set_dir(Led, GPIO_OUT);
@@ -167,18 +173,52 @@ void init() {
 
     // ADC Inint
     adc_init();
-    adc_set_clkdiv(48000); // 48,000,000/48,000 : 1,000 sps
+    adc_set_clkdiv(48000); // (48,000,000/48,000)/96  : 10 sps
     adc_gpio_init(26);
     adc_set_temp_sensor_enabled(true);
 
+    adc_set_round_robin((1 << 0) | (1 << 3));
+    adc_fifo_setup(true, true, 7, false, false);
+    adc_run(true);
+
     // DMA Inint
-    // dma_channel_claim(NTC_ADC_DMA_Channel);
+    dma_adc              = dma_claim_unused_channel(true);
+    dma_channel_config c = dma_channel_get_default_config(dma_adc);
 
-    // dma_channel_config NTC_ADC_DMA;
+    // 3. Configure the DMA Channel for this specific transfer
+    channel_config_set_transfer_data_size(&c, DMA_SIZE_16);
+    channel_config_set_read_increment(&c, false);
+    channel_config_set_write_increment(&c, true);
+    channel_config_set_dreq(&c, DREQ_ADC);
 
-    // dma_channel_configure(NTC_ADC_DMA_Channel, &NTC_ADC_DMA, &ADC, adc_add, 1, false);
+    // channel_config_set_chain_to(&c, dma_adc); // Chain to ITSELF for continuous loop!
+    channel_config_set_ring(&c, true, 7); // Ring buffer wrap (adjust size as needed)
 
-    // dma_channel_set_config(NTC_ADC_DMA_Channel, &NTC_ADC_DMA, false);
+    // Set up interrupt on completion
+    // dma_channel_set_irq0_enabled(dma_adc, true);
+    // irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);
+    // irq_set_enabled(DMA_IRQ_0, true);
+
+    // 4. Configure and start the DMA transfer
+    dma_channel_configure(dma_adc,       // Channel to configure
+                          &c,            // Channel config
+                          ADC_Buffer,    // Write address:
+                          &adc_hw->fifo, // Read address:
+                          7,             // Total number of transfers to perform
+                          false          // Start immediately
+    );
+
+    // dma_adc_controll      = dma_claim_unused_channel(true);
+    // dma_channel_config c1 = dma_channel_get_default_config(dma_adc_controll);
+
+    // // 3. Configure the DMA Channel for this specific transfer
+    // channel_config_set_transfer_data_size(&c1, DMA_SIZE_32);
+    // channel_config_set_read_increment(&c1, false);
+    // channel_config_set_write_increment(&c1, false);
+    // channel_config_set_chain_to(&c1, dma_adc);
+
+    // // 4. Configure and start the DMA transfer
+    // dma_channel_configure(dma_adc_controll, &c1, &dma_hw->ch[dma_adc].write_addr, ADC_Buffer, 1, false);
 
     // LCD Init
     LCD_init();
