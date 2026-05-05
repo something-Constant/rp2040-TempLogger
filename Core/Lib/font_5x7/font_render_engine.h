@@ -30,8 +30,10 @@ SOFTWARE.
 
 // Add LCD buffer here
 extern uint8_t Buffer[BufferSize];
+
 // Add LCD setpixel Function here
 #define setpixel(x, y, buffer) BufferSetPixel(x, y, 1, buffer)
+#define resetpixel(x, y, buffer) BufferSetPixel(x, y, 0, buffer)
 
 void Fontdrawline(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t *buffer) {
     if ((x0 < WIDTH && x1 < WIDTH) && (y0 < HEIGHT && y1 < HEIGHT)) {
@@ -88,6 +90,12 @@ void draw_text(char *str, int16_t x, int16_t y, uint8_t scale, uint8_t deph) {
         if (! g)
             return;
 
+        for (uint8_t z = y; z < (y + (Font_Height * scale)); z++) {
+            for (uint8_t f = x; f < (x + (Font_Width * scale)); f++) {
+                resetpixel(f, z, Buffer);
+            }
+        }
+
         for (uint8_t j = 0; j < deph; j++) {
             for (uint8_t i = 0; i < g->segment_count; i++) {
                 Fontdrawline((x + j + ((g->segments[i].x1 * scale))), (y + ((g->segments[i].y1 * scale))), (x + j + ((g->segments[i].x2 * scale))),
@@ -113,6 +121,12 @@ void GLCD_DrawChar(char c, uint8_t x, uint8_t y, uint8_t scale, uint8_t deph) {
 
     if (! g)
         return;
+
+    for (uint8_t z = y; z < (y + (Font_Height * scale)); z++) {
+        for (uint8_t f = x; f < (x + (Font_Width * scale)); f++) {
+            resetpixel(f, z, Buffer);
+        }
+    }
 
     for (uint8_t j = 0; j < deph; j++) {
         for (uint8_t i = 0; i < g->segment_count; i++) {

@@ -4,9 +4,11 @@ dist/
 build/
 __pycache__/
 Test/
+Generated_Debug/
 
 # Ignore a specific file
 pico_sdk_import.cmake
 
+# Ignore a specific tyoe
 *.bin
 *.hex
