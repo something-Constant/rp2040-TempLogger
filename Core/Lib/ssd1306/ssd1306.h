@@ -16,6 +16,10 @@ typedef unsigned int word;
 #define HEIGHT 32
 #define WIDTH 128
 
+
+#define HEIGHT_1 31
+#define WIDTH_1 127
+
 // >>3 = /8
 #define BufferSize ((WIDTH * HEIGHT) >> 3)
 extern uint8_t Buffer[BufferSize];

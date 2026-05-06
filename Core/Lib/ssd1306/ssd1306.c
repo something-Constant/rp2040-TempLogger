@@ -190,14 +190,14 @@ void DrawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t fille
         y1 = y1 ^ y2;
     }
 
-    if (x1 > 127)
-        x1 = 127;
-    if (x2 > 127)
-        x2 = 127;
-    if (y1 > 31)
-        y1 = 31;
-    if (y2 > 31)
-        y2 = 31;
+    if (x1 > WIDTH_1)
+        x1 = WIDTH_1;
+    if (x2 > WIDTH_1)
+        x2 = WIDTH_1;
+    if (y1 > HEIGHT_1)
+        y1 = HEIGHT_1;
+    if (y2 > HEIGHT_1)
+        y2 = HEIGHT_1;
 
     if (filled) {
         for (uint8_t y = y1; y <= y2; y++) {
