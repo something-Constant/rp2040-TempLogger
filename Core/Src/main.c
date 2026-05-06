@@ -482,24 +482,27 @@ int main() {
                                 sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
                                 draw_text(Data, items_x, 6, 3, 2, 0, Buffer);
 
-                                DrawRectangle(48, 3, 32, 80, 1, 0, Buffer);
+                                // DrawRectangle(48, 3, 32, 80, 1, 0, Buffer);
+                                DrawRectangle(0, 96, 32, 127, 1, 0, Buffer);
 
                                 sprintf(Data, "%02d", Item_Counter);
                                 draw_text(Data, 49, 6, 3, 2, 1, Buffer);
 
                                 break;
                             case 3 :
-                                // DrawRectangle(0, 3, 127, 28, 1, 1, Buffer);
-                                // sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
-                                // draw_text(Data, items_x, 6, 3, 2, 0, Buffer);
+                                DrawRectangle(0, 3, 127, 28, 1, 1, Buffer);
+                                sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
+                                draw_text(Data, items_x, 6, 3, 2, 0, Buffer);
 
-                                // DrawRectangle(0, 96, 32, 127, 1, 0, Buffer);
+                                DrawRectangle(0, 96, 32, 127, 1, 0, Buffer);
 
                                 sprintf(Data, "%02d", Item_Counter);
                                 draw_text(Data, 99, 6, 3, 2, 1, Buffer);
 
                                 break;
                         }
+                        sprintf(Data, "%02d,%02d,%02d", key1.Deb_Counter, key1.output, key1.key_Hold_Flag);
+                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph, 1, Buffer);
 
                         // ClearBuffer(Buffer);
 
