@@ -482,8 +482,10 @@ int main() {
                                 sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
                                 draw_text(Data, items_x, 6, 3, 2, 0, Buffer);
 
-                                // DrawRectangle(48, 3, 32, 80, 1, 0, Buffer);
-                                DrawRectangle(0, 96, 32, 127, 1, 0, Buffer);
+                                DrawRectangle(48, 3, 32, 80, 1, 0, Buffer);
+                                // DrawRectangle(32, 3, 48, 80, 1, 0, Buffer);
+
+                                // DrawRectangle(0, 96, 32, 127, 1, 0, Buffer);
 
                                 sprintf(Data, "%02d", Item_Counter);
                                 draw_text(Data, 49, 6, 3, 2, 1, Buffer);
