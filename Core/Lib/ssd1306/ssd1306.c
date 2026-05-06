@@ -38,9 +38,9 @@ void SetPixel(uint8_t x, uint8_t y, uint8_t Status) {
 }
 
 void LCD_init(void) {
-
     SendLcd(Command_Reg, Display_OFF);
-
+    SendLcd(Command_Reg, Entir_Display_OFF);
+    SendLcd(Command_Reg, Charge_Pump_Disable);
 
     SendLcd(Command_Reg, Contrast_Reg);
     SendLcd(Command_Reg, Contrast_Value);
@@ -190,16 +190,19 @@ void DrawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t fille
         y1 = y1 ^ y2;
     }
 
-    x1 = (x1 > 127) ? x1 = 127 : x1;
-    x2 = (x2 > 127) ? x2 = 127 : x2;
-
-    y1 = (y1 > 63) ? y1 = 63 : y1;
-    y2 = (y2 > 63) ? y2 = 63 : y2;
+    if (x1 > 127)
+        x1 = 127;
+    if (x2 > 127)
+        x2 = 127;
+    if (y1 > 63)
+        y1 = 63;
+    if (y2 > 63)
+        y2 = 63;
 
     if (filled) {
         for (uint8_t y = y1; y <= y2; y++) {
             for (uint8_t x = x1; x <= x2; x++) {
-                BufferSetPixel(x, y, 1, buffer);
+                BufferSetPixel(x, y, color, buffer);
             }
         }
     }

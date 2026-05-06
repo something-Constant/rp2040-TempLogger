@@ -39,8 +39,8 @@ float ADC_Voltage, Core_Temp;
 enum menus { MAIN, SETTING, BACK, TIME_SETTING, DATE_SETTING, SAVEING_SETTING, FIRMWARE_INFO };
 typedef enum menus MENUS;
 
-MENUS menu     = MAIN;
-int8_t submenu = 0, submenu_max = 0, submenu_min = 0;
+MENUS menu      = MAIN;
+uint8_t submenu = 0, submenu_max = 0, submenu_min = 0, Item_Counter = 0, submenu_flag, Item_Counter_min = 0, Item_Counter_max = 0, item_pos;
 
 #define title_y 1 // 0-10
 
@@ -69,13 +69,17 @@ int main() {
     Ds3231_Reset_Alarm_Flag(Alarm1);
 
     /// key init
-    KeyIint(&key1, 1, 4, 30);
-    KeyIint(&key2, 1, 4, 30);
+    KeyIint(&key1, 1, 4, 15);
+    KeyIint(&key2, 1, 4, 15);
+
+    submenu_flag = 1;
+    menu         = TIME_SETTING;
+
+    submenu     = 0;
+    submenu_max = 2;
+    submenu_min = 0;
 
     while (1) {
-        Ds3231_GetTime(&t, Bin);
-        Ds3231_GetDate(&d, Bin);
-
         if (gpio_get(Ds3231_Gpio_Interrupt) == 0U) {
             Ds3231_Reset_Alarm_Flag(Alarm1);
         }
@@ -83,34 +87,67 @@ int main() {
         key1_state = KeyDetect(&key1, gpio_get(Button1), 1);
         key2_state = KeyDetect(&key2, gpio_get(Button2), 1);
 
-        if (key1_state == key_Press) {
-            if (submenu < submenu_max)
-                submenu++;
-
-            key1_state = NotActive;
-            key2_state = NotActive;
-
-            key1.output = NotActive;
-            key2.output = NotActive;
-
-            ClearBuffer(Buffer);
+        if (! gpio_get(Button1)) {
+            sio_hw->gpio_togl = (1ul << Led);
         }
 
-        if (key2_state == key_Press) {
-            if (submenu > submenu_min)
-                submenu--;
+        if (submenu_flag) {
+            if (key1_state == key_Press) {
+                if (submenu < submenu_max)
+                    submenu++;
 
-            key1_state = NotActive;
-            key2_state = NotActive;
+                key1_state = NotActive;
+                key2_state = NotActive;
 
-            key1.output = NotActive;
-            key2.output = NotActive;
+                key1.output = NotActive;
+                key2.output = NotActive;
 
-            ClearBuffer(Buffer);
+                ClearBuffer(Buffer);
+            }
+
+            if (key2_state == key_Press) {
+                if (submenu > submenu_min)
+                    submenu--;
+
+                key1_state = NotActive;
+                key2_state = NotActive;
+
+                key1.output = NotActive;
+                key2.output = NotActive;
+
+                ClearBuffer(Buffer);
+            }
+        }
+        else {
+            if (key1_state == key_Press) {
+                if (Item_Counter < Item_Counter_max)
+                    Item_Counter++;
+
+                key1.output = NotActive;
+                key2.output = NotActive;
+                key1_state  = NotActive;
+                key2_state  = NotActive;
+
+                // ClearBuffer(Buffer);
+            }
+
+            if (key2_state == key_Press) {
+                if (Item_Counter > Item_Counter_min)
+                    Item_Counter--;
+
+                key1.output = NotActive;
+                key2.output = NotActive;
+                key1_state  = NotActive;
+                key2_state  = NotActive;
+
+                // ClearBuffer(Buffer);
+            }
         }
 
         switch (menu) {
             case MAIN :
+                Ds3231_GetTime(&t, Bin);
+                Ds3231_GetDate(&d, Bin);
 
                 sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
                 draw_text(Data, 20, (15), 2, deph, 1, Buffer);
@@ -212,7 +249,7 @@ int main() {
                             key2.output = NotActive;
 
                             submenu     = 0;
-                            submenu_max = 4;
+                            submenu_max = 2;
                             submenu_min = 0;
 
                             ClearBuffer(Buffer);
@@ -322,19 +359,258 @@ int main() {
                 break;
 
             case TIME_SETTING :
+                /// TIME_SETTING menu
+                switch (submenu) {
+                    case 0 :
+                        /// @brief Previse Menu(Main Menu) Selected
+                        DrawRectangle(rec_x1, 0, rec_scroll_x2, 8, 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_UP_ARROW, 114, 1, scale, deph, 0, Buffer);
 
-                if (t.time_format == _12hour_mode) {
-                    if (t.AM_PM)
-                        sprintf(Data, "%02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "PM");
-                    else
-                        sprintf(Data, "%02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "AM");
+                        /// @brief Title
+                        draw_text("Setting", 35, title_y, scale, deph, 0, Buffer);
+
+                        /// @brief Scroll Bar
+                        // DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        // DrawRectangle(123, 1, 126, 7, 1, 1, Buffer);
+
+                        /// @brief Items
+                        sprintf(Data, "Time:%02d:%02d:%02d", t.hour, t.min, t.sec);
+                        draw_text(Data, items_x, items_y(0), scale, deph, 1, Buffer);
+
+                        draw_text("Save Setting", items_x, items_y(1), scale, deph, 1, Buffer);
+
+                        /// @brief Button Action
+                        if (key1_state == key_Hold) {
+                            menu = SETTING;
+
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            submenu = 0;
+
+                            ClearBuffer(Buffer);
+                        }
+                        break;
+
+                    case 1 :
+
+                        if (key1_state == key_Hold) {
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+                            key1_state  = NotActive;
+                            key2_state  = NotActive;
+
+                            item_pos++;
+
+                            switch (item_pos) {
+                                case (1) :
+                                    submenu_flag = 0;
+
+                                    Item_Counter     = t.hour;
+                                    Item_Counter_min = 0;
+                                    Item_Counter_max = 23;
+                                    break;
+                                case (2) :
+
+                                    t.hour = Item_Counter;
+
+                                    Item_Counter     = t.min;
+                                    Item_Counter_min = 0;
+                                    Item_Counter_max = 59;
+                                    break;
+                                case (3) :
+                                    t.min = Item_Counter;
+
+                                    Item_Counter     = t.sec;
+                                    Item_Counter_min = 0;
+                                    Item_Counter_max = 59;
+                                    break;
+                                case (4) :
+                                    t.sec = Item_Counter;
+
+                                    item_pos     = 0;
+                                    submenu_flag = 1;
+                                    ClearBuffer(Buffer);
+                            }
+
+                            // ClearBuffer(Buffer);
+                        }
+
+                        if (key2_state == key_Hold) {
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output  = NotActive;
+                            key2.output  = NotActive;
+                            submenu_flag = 1;
+                            item_pos     = 0;
+                        }
+
+                        switch (item_pos) {
+                            case 0 :
+                                /// @brief TIME_SETTING Selected
+                                DrawRectangle(rec_x1, rec_y1(submenu), rec_scroll_x2, rec_y2(submenu), 1, 1, Buffer);
+                                GLCD_DrawChar(CHAR_ENTER, errow_scroll_x, errow_y(submenu), scale, deph, 0, Buffer);
+
+                                /// @brief Title
+                                GLCD_DrawChar(CHAR_UP_ARROW, 114, 1, scale, deph, 1, Buffer);
+                                draw_text("Setting", 35, title_y, scale, deph, 1, Buffer);
+
+                                /// @brief Items
+                                sprintf(Data, "Time:%02d:%02d:%02d", t.hour, t.min, t.sec);
+                                draw_text(Data, items_x, items_y(0), scale, deph, 0, Buffer);
+
+                                draw_text("Save Setting", items_x, items_y(1), scale, deph, 1, Buffer);
+                                break;
+                            case 1 :
+
+                                DrawRectangle(0, 3, 127, 28, 1, 1, Buffer);
+                                sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
+                                draw_text(Data, items_x, 6, 3, 2, 0, Buffer);
+
+                                DrawRectangle(0, 3, 32, 28, 1, 0, Buffer);
+
+                                sprintf(Data, "%02d", Item_Counter);
+                                draw_text(Data, items_x, 6, 3, 2, 1, Buffer);
+
+                                break;
+                            case 2 :
+                                DrawRectangle(0, 3, 127, 28, 1, 1, Buffer);
+                                sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
+                                draw_text(Data, items_x, 6, 3, 2, 0, Buffer);
+
+                                DrawRectangle(48, 3, 32, 80, 1, 0, Buffer);
+
+                                sprintf(Data, "%02d", Item_Counter);
+                                draw_text(Data, 49, 6, 3, 2, 1, Buffer);
+
+                                break;
+                            case 3 :
+                                // DrawRectangle(0, 3, 127, 28, 1, 1, Buffer);
+                                // sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
+                                // draw_text(Data, items_x, 6, 3, 2, 0, Buffer);
+
+                                // DrawRectangle(0, 96, 32, 127, 1, 0, Buffer);
+
+                                sprintf(Data, "%02d", Item_Counter);
+                                draw_text(Data, 99, 6, 3, 2, 1, Buffer);
+
+                                break;
+                        }
+
+                        // ClearBuffer(Buffer);
+
+                        // sprintf(Data, "%02d,%02d,%02d", key1.Deb_Counter, key1.output, key1.key_Hold_Flag);
+                        // draw_text(Data, 0, (scale * Font_H * 0), scale, deph, 1, Buffer);
+
+                        // SendBuffer(Buffer);
+
+                        break;
+
+                    case 2 :
+                        /// @brief DATE_SETTING Selected
+                        DrawRectangle(rec_x1, rec_y1(submenu), rec_scroll_x2, rec_y2(submenu), 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_ENTER, errow_scroll_x, errow_y(submenu), scale, deph, 0, Buffer);
+
+                        /// @brief Title
+                        GLCD_DrawChar(CHAR_UP_ARROW, 114, 1, scale, deph, 1, Buffer);
+                        draw_text("Setting", 35, title_y, scale, deph, 1, Buffer);
+
+                        /// @brief Scroll Bar
+                        // DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        // DrawRectangle(123, 13, 126, 19, 1, 1, Buffer);
+
+                        /// @brief Items
+                        sprintf(Data, "Time:%02d:%02d:%02d", t.hour, t.min, t.sec);
+                        draw_text(Data, items_x, items_y(0), scale, deph, 1, Buffer);
+
+                        draw_text("Save Setting", items_x, items_y(1), scale, deph, 0, Buffer);
+
+                        if (key1_state == key_Hold) {
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            Ds3231_SetTime(&t, Bin);
+
+                            DrawRectangle(0, 3, 127, 22, 1, 1, Buffer);
+                            draw_text("Time Saved.", 3, 5, 2, deph, 0, Buffer);
+                            SendBuffer(Buffer);
+                            sleep_ms(500);
+
+                            ClearBuffer(Buffer);
+                        }
+
+                        break;
+
+                    case 3 :
+                        /// @brief SAVEING_SETTING Selected
+
+                        DrawRectangle(rec_x1, 0, rec_scroll_x2, 8, 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_ENTER, 114, 1, scale, deph, 0, Buffer);
+
+                        /// @brief Scroll Bar
+                        DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        DrawRectangle(123, 19, 126, 25, 1, 1, Buffer);
+
+                        /// @brief Items
+                        draw_text("SAVEING SETTING", items_x, 1, scale, deph, 0, Buffer);
+                        draw_text("FIRMWARE INFO", items_x, items_y(0), scale, deph, 1, Buffer);
+
+                        if (key1_state == key_Hold) {
+                            menu = SAVEING_SETTING;
+
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            submenu     = 0;
+                            submenu_max = 4;
+                            submenu_min = 0;
+                            ClearBuffer(Buffer);
+                        }
+
+                        break;
+
+                    case 4 :
+                        /// @brief FIRMWARE_INFO Selected
+                        DrawRectangle(rec_x1, rec_y1(1), rec_scroll_x2, rec_y2(1), 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_ENTER, errow_scroll_x, errow_y(1), scale, deph, 0, Buffer);
+
+                        /// @brief Scroll Bar
+                        DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        DrawRectangle(123, 25, 126, 30, 1, 1, Buffer);
+
+                        /// @brief Items
+
+                        draw_text("SAVEING SETTING", items_x, 1, scale, deph, 1, Buffer);
+                        draw_text("FIRMWARE INFO", items_x, items_y(0), scale, deph, 0, Buffer);
+
+                        if (key1_state == key_Hold) {
+                            menu = FIRMWARE_INFO;
+
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            submenu     = 0;
+                            submenu_max = 4;
+                            submenu_min = 0;
+
+                            ClearBuffer(Buffer);
+                        }
+
+                        break;
                 }
-                else {
-                    sprintf(Data, "%02d:%02d:%02d\r\n", t.hour, t.min, t.sec);
-                }
-
-                draw_text(Data, 0, (scale * Font_H * 1), 2, deph, 1, Buffer);
-
                 break;
 
             case DATE_SETTING :
@@ -357,6 +633,11 @@ int main() {
 
                 break;
         }
+
+        // ClearBuffer(Buffer);
+
+        // sprintf(Data, "%02d,%02d,%02d", key1.Deb_Counter, key1.output, key1.key_Hold_Flag);
+        // draw_text(Data, 0, (scale * Font_H * 0), scale, deph, 1, Buffer);
 
         SendBuffer(Buffer);
     }

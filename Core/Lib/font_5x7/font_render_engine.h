@@ -92,8 +92,8 @@ void draw_text(char *str, int16_t x, int16_t y, uint8_t scale, uint8_t deph, uin
         if (! g)
             return;
 
-        for (uint8_t z = y; z < (y + (Font_Height * scale)); z++) {
-            for (uint8_t f = x; f < (x + (Font_Width * scale)); f++) {
+        for (uint8_t z = y; z < (y + (Font_Height * scale) + space); z++) {
+            for (uint8_t f = x; f < (x + (Font_Width * scale) + space); f++) {
                 setpixel(f, z, clear, buffer);
             }
         }
