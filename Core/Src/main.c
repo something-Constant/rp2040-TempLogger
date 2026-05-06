@@ -27,7 +27,7 @@ MDF Core_ADC;
 /// buttons instanse
 key key1, key2;
 
-Key_State key1, key2;
+Key_State key1_state, key2_state;
 
 int dma_adc;
 
@@ -52,9 +52,9 @@ int main() {
     Ds3231_SetAlarm_Interrupt(Alarm1, 1);
     Ds3231_Reset_Alarm_Flag(Alarm1);
 
+    /// key init
     KeyIint(&key1, 1, 4, 50);
     KeyIint(&key2, 1, 4, 20);
-
 
     while (1) {
         Ds3231_GetTime(&t, Bin);
@@ -64,8 +64,8 @@ int main() {
             Ds3231_Reset_Alarm_Flag(Alarm1);
         }
 
-        KeyDetect(&key1, gpio_get(Button1), 1);
-        KeyDetect(&key2, gpio_get(Button1), 1);
+        key1_state = KeyDetect(&key1, gpio_get(Button1), 1);
+        key2_state = KeyDetect(&key2, gpio_get(Button2), 1);
 
         switch (menu) {
             case MAIN :
