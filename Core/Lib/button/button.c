@@ -7,7 +7,6 @@
  * @param Deb_Press     amount of loop iteration for key to be press
  * @param Deb_DPress    amount of loop iteration for key timeout to double press
  * @param Deb_Hold      amount of loop iteration for key to be hold
-
  */
 void KeyIint(key *root, uint8_t Deb_Press, uint8_t Deb_DPress, uint8_t Deb_Hold) {
     root->Deb_Press  = Deb_Press;
@@ -31,7 +30,7 @@ Key_State KeyDetect(key *root, uint32_t input, uint8_t status) {
             root->Deb_Counter++;
             root->Timeout_Hold = 0;
 
-            if (root->Deb_Counter > root->Deb_Hold) {
+            if (root->Deb_Counter >= root->Deb_Hold) {
                 root->key_Hold_Flag   = 1;
                 root->Timeout_Counter = 0;
                 root->Deb_Counter     = 0;
@@ -39,18 +38,16 @@ Key_State KeyDetect(key *root, uint32_t input, uint8_t status) {
             }
         }
         else {
-            if ((root->Deb_Counter > root->Deb_Press) && (root->key_Hold_Flag != 1)) {
+            if ((root->Deb_Counter >= root->Deb_Press) && (root->key_Hold_Flag != 1)) {
                 root->Timeout_Counter++;
 
-                if (root->Timeout_Counter > root->Deb_DPress) {
-                    // root->key_Press_Flag  = 1;
+                if (root->Timeout_Counter >= root->Deb_DPress) {
                     root->Deb_Counter     = 0;
                     root->Timeout_Counter = 0;
                     root->output          = key_Press;
                 }
 
                 else if ((root->Timeout_Counter > 1) && (root->Timeout_Hold != root->Deb_Counter)) {
-                    // root->key_DPress_Flag = 1;
                     root->Deb_Counter     = 0;
                     root->Timeout_Counter = 0;
                     root->output          = key_DPress;
