@@ -29,13 +29,14 @@ SOFTWARE.
 #include "ssd1306/ssd1306.h"
 
 // Add LCD buffer here
-extern uint8_t Buffer[BufferSize];
+// extern uint8_t Buffer[BufferSize];
 
 // Add LCD setpixel Function here
-#define setpixel(x, y, buffer) BufferSetPixel(x, y, 1, buffer)
-#define resetpixel(x, y, buffer) BufferSetPixel(x, y, 0, buffer)
+// #define setpixel(x, y, buffer) BufferSetPixel(x, y, 1, buffer)
+// #define resetpixel(x, y, buffer) BufferSetPixel(x, y, 0, buffer)
+// #define setpixel(x, y, color, buffer) BufferSetPixel(x, y, color, buffer)
 
-void Fontdrawline(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t *buffer) {
+void Fontdrawline(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t color, uint8_t *buffer) {
     if ((x0 < WIDTH && x1 < WIDTH) && (y0 < HEIGHT && y1 < HEIGHT)) {
         int16_t adx = (((x1 >= x0) ? x1 - x0 : x0 - x1) + 1) << 1;
         int16_t ady = (((y1 >= y0) ? y1 - y0 : y0 - y1) + 1) << 1;
@@ -49,7 +50,7 @@ void Fontdrawline(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t *buffe
             eps = (ady - adx) >> 1;
 
             for (int16_t x = x0, y = y0; sx < 0 ? x >= x1 : x <= x1; x += sx) {
-                setpixel(x, y, Buffer);
+                setpixel(x, y, color, buffer);
 
                 eps += ady;
                 if (eps << 1 >= adx) {
@@ -61,7 +62,7 @@ void Fontdrawline(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t *buffe
         else {
             eps = (adx - ady) >> 1;
             for (int16_t x = x0, y = y0; sy < 0 ? y >= y1 : y <= y1; y += sy) {
-                setpixel(x, y, Buffer);
+                setpixel(x, y, color, buffer);
 
                 eps += adx;
                 if (eps << 1 >= ady) {
@@ -81,8 +82,9 @@ Glyph_Line *get_glyph_Line(uint8_t c) {
     return NULL; // Character not supported
 }
 
-void draw_text(char *str, int16_t x, int16_t y, uint8_t scale, uint8_t deph) {
+void draw_text(char *str, int16_t x, int16_t y, uint8_t scale, uint8_t deph, uint8_t color, uint8_t *buffer) {
     Glyph_Line *g = NULL;
+    uint8_t clear = color ^ 1;
 
     while (*str) {
         g = get_glyph_Line(*(str++));
@@ -92,19 +94,19 @@ void draw_text(char *str, int16_t x, int16_t y, uint8_t scale, uint8_t deph) {
 
         for (uint8_t z = y; z < (y + (Font_Height * scale)); z++) {
             for (uint8_t f = x; f < (x + (Font_Width * scale)); f++) {
-                resetpixel(f, z, Buffer);
+                setpixel(f, z, clear, buffer);
             }
         }
 
         for (uint8_t j = 0; j < deph; j++) {
             for (uint8_t i = 0; i < g->segment_count; i++) {
                 Fontdrawline((x + j + ((g->segments[i].x1 * scale))), (y + ((g->segments[i].y1 * scale))), (x + j + ((g->segments[i].x2 * scale))),
-                             (y + ((g->segments[i].y2 * scale))), Buffer);
+                             (y + ((g->segments[i].y2 * scale))), color, buffer);
             }
         }
 
         // Advance cursor
-        if ((x + (Font_Width * scale) + 5) < WIDTH) {
+        if ((x + (Font_Width * scale) + Font_Width) < WIDTH) {
             x += Font_Width * scale + space;
         }
         else {
@@ -114,8 +116,9 @@ void draw_text(char *str, int16_t x, int16_t y, uint8_t scale, uint8_t deph) {
     }
 }
 
-void GLCD_DrawChar(char c, uint8_t x, uint8_t y, uint8_t scale, uint8_t deph) {
+void GLCD_DrawChar(char c, uint8_t x, uint8_t y, uint8_t scale, uint8_t deph, uint8_t color, uint8_t *buffer) {
     Glyph_Line *g = NULL;
+    uint8_t clear = color ^ 1;
 
     g = get_glyph_Line(c);
 
@@ -124,14 +127,14 @@ void GLCD_DrawChar(char c, uint8_t x, uint8_t y, uint8_t scale, uint8_t deph) {
 
     for (uint8_t z = y; z < (y + (Font_Height * scale)); z++) {
         for (uint8_t f = x; f < (x + (Font_Width * scale)); f++) {
-            resetpixel(f, z, Buffer);
+            setpixel(f, z, clear, buffer);
         }
     }
 
     for (uint8_t j = 0; j < deph; j++) {
         for (uint8_t i = 0; i < g->segment_count; i++) {
             Fontdrawline((x + j + ((g->segments[i].x1 * scale))), (y + ((g->segments[i].y1 * scale))), (x + j + ((g->segments[i].x2 * scale))),
-                         (y + ((g->segments[i].y2 * scale))), Buffer);
+                         (y + ((g->segments[i].y2 * scale))), color, buffer);
         }
     }
 }

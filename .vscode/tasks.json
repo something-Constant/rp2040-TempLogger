@@ -28,7 +28,7 @@
         {
             "type": "shell",
             "label": "ReBuild Cmake",
-            "command": "cd '${workspaceFolder}';rm ./build ;cmake -S ./ -B ./build/  --fresh",
+            "command": "cd '${workspaceFolder}';rmdir -Recurse -Force ./build ;cmake -S ./ -B ./build/  --fresh",
             "problemMatcher": []
         }
     ]

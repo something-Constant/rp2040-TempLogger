@@ -362,6 +362,15 @@ LineSegment o_lower[] = {
 };
 
 LineSegment p_lower[] = {
+    // {0, 0, 0, 6},
+    // {4, 1, 4, 3},
+    // {2, 0, 3, 0},
+    // {2, 4, 3, 4},
+    // {3, 4, 4, 3},
+    // {3, 0, 4, 1},
+    // {0, 1, 2, 0},
+    // {0, 3, 2, 4}
+
     {0, 1, 0, 6},
     {0, 1, 2, 1},
     {2, 1, 3, 2},
@@ -383,6 +392,10 @@ LineSegment q_lower[] = {
 };
 
 LineSegment r_lower[] = {
+    // {1, 1, 1, 6},
+    // {1, 3, 3, 1},
+    // {3, 1, 4, 2}
+    // {0, 0, 0, 5},
     {0, 2, 0, 6},
     {0, 4, 2, 2},
     {2, 2, 3, 2},
@@ -468,6 +481,7 @@ LineSegment _1_upper[] = {
 };
 
 LineSegment _2_upper[] = {
+
     {0, 1, 1, 0},
     {1, 0, 3, 0},
     {3, 0, 4, 1},
@@ -659,6 +673,19 @@ LineSegment _greaterthan[] = {
 };
 
 LineSegment _colon[] = {
+    // {0, 0, 1, 0},
+    // {0, 1, 1, 1},
+    // {0, 5, 1, 5},
+    // {0, 6, 1, 6},
+    // {0, 5, 0, 6},
+    // {1, 5, 1, 6},
+    // {0, 0, 0, 1},
+    // {1, 0, 1, 1},
+    // {0, 0, 1, 1},
+    // {0, 1, 1, 0},
+    // {0, 6, 1, 5},
+    // {0, 5, 1, 6}
+
     {1, 5, 1, 6},
     {1, 6, 2, 6},
     {2, 6, 2, 5},
@@ -735,32 +762,32 @@ LineSegment _space[] = {};
 // ======================
 Glyph_Line font_table[] = {
     // Letters A-Z
-    {'A',              (sizeof(A_upper) >> 2),              A_upper        },
-    {'B',              (sizeof(B_upper) >> 2),              B_upper        },
-    {'C',              (sizeof(C_upper) >> 2),              C_upper        },
-    {'D',              (sizeof(D_upper) >> 2),              D_upper        },
-    {'E',              (sizeof(E_upper) >> 2),              E_upper        },
-    {'F',              (sizeof(F_upper) >> 2),              F_upper        },
-    {'G',              (sizeof(G_upper) >> 2),              G_upper        },
-    {'H',              (sizeof(H_upper) >> 2),              H_upper        },
-    {'I',              (sizeof(I_upper) >> 2),              I_upper        },
-    {'J',              (sizeof(J_upper) >> 2),              J_upper        },
-    {'K',              (sizeof(K_upper) >> 2),              K_upper        },
-    {'L',              (sizeof(L_upper) >> 2),              L_upper        },
-    {'M',              (sizeof(M_upper) >> 2),              M_upper        },
-    {'N',              (sizeof(N_upper) >> 2),              N_upper        },
-    {'O',              (sizeof(O_upper) >> 2),              O_upper        },
-    {'P',              (sizeof(P_upper) >> 2),              P_upper        },
-    {'Q',              (sizeof(Q_upper) >> 2),              Q_upper        },
-    {'R',              (sizeof(R_upper) >> 2),              R_upper        },
-    {'S',              (sizeof(S_upper) >> 2),              S_upper        },
-    {'T',              (sizeof(T_upper) >> 2),              T_upper        },
-    {'U',              (sizeof(U_upper) >> 2),              U_upper        },
-    {'V',              (sizeof(V_upper) >> 2),              V_upper        },
-    {'W',              (sizeof(W_upper) >> 2),              W_upper        },
-    {'X',              (sizeof(X_upper) >> 2),              X_upper        },
-    {'Y',              (sizeof(Y_upper) >> 2),              Y_upper        },
-    {'Z',              (sizeof(Z_upper) >> 2),              Z_upper        },
+    {'A',              sizeof(A_upper) / linepoint,         A_upper        },
+    {'B',              sizeof(B_upper) / linepoint,         B_upper        },
+    {'C',              sizeof(C_upper) / linepoint,         C_upper        },
+    {'D',              sizeof(D_upper) / linepoint,         D_upper        },
+    {'E',              sizeof(E_upper) / linepoint,         E_upper        },
+    {'F',              sizeof(F_upper) / linepoint,         F_upper        },
+    {'G',              sizeof(G_upper) / linepoint,         G_upper        },
+    {'H',              sizeof(H_upper) / linepoint,         H_upper        },
+    {'I',              sizeof(I_upper) / linepoint,         I_upper        },
+    {'J',              sizeof(J_upper) / linepoint,         J_upper        },
+    {'K',              sizeof(K_upper) / linepoint,         K_upper        },
+    {'L',              sizeof(L_upper) / linepoint,         L_upper        },
+    {'M',              sizeof(M_upper) / linepoint,         M_upper        },
+    {'N',              sizeof(N_upper) / linepoint,         N_upper        },
+    {'O',              sizeof(O_upper) / linepoint,         O_upper        },
+    {'P',              sizeof(P_upper) / linepoint,         P_upper        },
+    {'Q',              sizeof(Q_upper) / linepoint,         Q_upper        },
+    {'R',              sizeof(R_upper) / linepoint,         R_upper        },
+    {'S',              sizeof(S_upper) / linepoint,         S_upper        },
+    {'T',              sizeof(T_upper) / linepoint,         T_upper        },
+    {'U',              sizeof(U_upper) / linepoint,         U_upper        },
+    {'V',              sizeof(V_upper) / linepoint,         V_upper        },
+    {'W',              sizeof(W_upper) / linepoint,         W_upper        },
+    {'X',              sizeof(X_upper) / linepoint,         X_upper        },
+    {'Y',              sizeof(Y_upper) / linepoint,         Y_upper        },
+    {'Z',              sizeof(Z_upper) / linepoint,         Z_upper        },
     // Letters a-z
     {'a',              sizeof(a_lower) / linepoint,         a_lower        },
     {'b',              sizeof(b_lower) / linepoint,         b_lower        },

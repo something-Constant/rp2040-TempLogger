@@ -16,10 +16,11 @@ typedef unsigned int word;
 #define HEIGHT 32
 #define WIDTH 128
 
+// >>3 = /8
 #define BufferSize ((WIDTH * HEIGHT) >> 3)
 extern uint8_t Buffer[BufferSize];
 
-#define setpixel(x, y, buffer) BufferSetPixel(x, y, 1, buffer)
+#define setpixel(x, y, color, buffer) BufferSetPixel(x, y, color, buffer)
 
 #define line_1 0
 #define line_2 4
@@ -191,6 +192,11 @@ void Bitmap(uint8_t x, uint8_t y, uint8_t *Data, uint16_t wight, uint16_t hight)
 void FillBuffer(uint8_t XOffset, uint8_t YOffset, uint8_t *Data, uint8_t Width, uint8_t Height, uint8_t *buffer);
 void SendBuffer(uint8_t *buffer);
 void ClearBuffer(uint8_t *buffer);
-void DrawLine(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t *buffer);
+void DrawLine(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t color, uint8_t *buffer);
+
+void DrawRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t filled, uint8_t color, uint8_t *buffer);
+void DrawCircleQuarter(uint8_t x, uint8_t y, uint8_t radius, uint8_t quadrant, uint8_t color, uint8_t *buffer);
+void DrawRoundedRectangle(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t radius, uint8_t color, uint8_t *buffer);
+void DrawCircle(int16_t x0, int16_t y0, int16_t radius, uint8_t filled, uint8_t color, uint8_t *buffer);
 
 #endif

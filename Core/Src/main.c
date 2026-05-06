@@ -36,10 +36,26 @@ const float conversion_factor = 3.3f / (1 << 12);
 float ADC_Voltage, Core_Temp;
 
 /// menus
-enum menus { MAIN, SETTING, TIME_SETTING, DATE_SETTING, SAVEING_SETTING, FIRMWARE_INFO, BACK };
+enum menus { MAIN, SETTING, BACK, TIME_SETTING, DATE_SETTING, SAVEING_SETTING, FIRMWARE_INFO };
 typedef enum menus MENUS;
 
-MENUS menu = MAIN, submenu = MAIN;
+MENUS menu     = MAIN;
+int8_t submenu = 0, submenu_max = 0, submenu_min = 0;
+
+#define title_y 1 // 0-10
+
+#define items_x 1
+#define items_y(Line) ((11 * Line) + 11)
+
+#define errow_scroll_x 114
+#define errow_y(Line) (11 * Line)
+
+#define rec_x1 0
+#define rec_x2 127
+#define rec_scroll_x2 120
+
+#define rec_y1(Line) ((11 * Line) - 2)
+#define rec_y2(Line) ((11 * Line) + 8)
 
 int main() {
     init();
@@ -54,7 +70,7 @@ int main() {
 
     /// key init
     KeyIint(&key1, 1, 4, 30);
-    KeyIint(&key2, 1, 4, 20);
+    KeyIint(&key2, 1, 4, 30);
 
     while (1) {
         Ds3231_GetTime(&t, Bin);
@@ -67,20 +83,37 @@ int main() {
         key1_state = KeyDetect(&key1, gpio_get(Button1), 1);
         key2_state = KeyDetect(&key2, gpio_get(Button2), 1);
 
+        if (key1_state == key_Press) {
+            if (submenu < submenu_max)
+                submenu++;
+
+            key1_state = NotActive;
+            key2_state = NotActive;
+
+            key1.output = NotActive;
+            key2.output = NotActive;
+
+            ClearBuffer(Buffer);
+        }
+
+        if (key2_state == key_Press) {
+            if (submenu > submenu_min)
+                submenu--;
+
+            key1_state = NotActive;
+            key2_state = NotActive;
+
+            key1.output = NotActive;
+            key2.output = NotActive;
+
+            ClearBuffer(Buffer);
+        }
+
         switch (menu) {
             case MAIN :
-                if (t.time_format == _12hour_mode) {
-                    if (t.AM_PM)
-                        sprintf(Data, "%02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "PM");
-                    else
-                        sprintf(Data, "%02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "AM");
 
-                    draw_text(Data, 0, (scale * Font_H * 1), 2, deph);
-                }
-                else {
-                    sprintf(Data, "%02d:%02d:%02d\r\n", t.hour, t.min, t.sec);
-                    draw_text(Data, 20, (15), 2, deph);
-                }
+                sprintf(Data, "%02d:%02d:%02d", t.hour, t.min, t.sec);
+                draw_text(Data, 20, (15), 2, deph, 1, Buffer);
 
                 // Ds3231_Print_Temp(Ds3231_Read_Temp(), Data);
                 // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
@@ -97,14 +130,20 @@ int main() {
                 NTC_Temperature = NTC_ADC2Temperature(median_update(&NTC_ADC, ADC_Buffer[0]));
 
                 sprintf(Data, "Temp:%3dC, 20%02d/%02d/%02d", NTC_Temperature, d.year, d.month, d.day);
-                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+                draw_text(Data, 0, (scale * Font_H * 0), scale, deph, 1, Buffer);
 
                 if (key1_state == key_Hold) {
-                    menu    = SETTING;
-                    submenu = TIME_SETTING;
+                    menu = SETTING;
 
-                    key1_state  = NotActive;
+                    submenu     = 0;
+                    submenu_max = 4;
+                    submenu_min = 0;
+
+                    key1_state = NotActive;
+                    key2_state = NotActive;
+
                     key1.output = NotActive;
+                    key2.output = NotActive;
 
                     ClearBuffer(Buffer);
                 }
@@ -114,73 +153,170 @@ int main() {
             case SETTING :
                 /// setting sub menu
                 switch (submenu) {
-                    case TIME_SETTING :
-                        sprintf(Data, "TIME_SETTING");
-                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+                    case 0 :
+                        /// @brief Previse Menu(Main Menu) Selected
+                        DrawRectangle(rec_x1, 0, rec_scroll_x2, 8, 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_UP_ARROW, 114, 1, scale, deph, 0, Buffer);
 
-                        sprintf(Data, "submenu: %02d", submenu);
-                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+                        /// @brief Title
+                        draw_text("Main menu", 32, title_y, scale, deph, 0, Buffer);
+
+                        /// @brief Scroll Bar
+                        DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        DrawRectangle(123, 1, 126, 7, 1, 1, Buffer);
+
+                        /// @brief Items
+                        draw_text("TIME SETTING", items_x, items_y(0), scale, deph, 1, Buffer);
+                        draw_text("DATE SETTING", items_x, items_y(1), scale, deph, 1, Buffer);
+
+                        /// @brief Button Action
+                        if (key1_state == key_Hold) {
+                            menu = MAIN;
+
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            submenu = 0;
+
+                            ClearBuffer(Buffer);
+                        }
+                        break;
+
+                    case 1 :
+                        /// @brief TIME_SETTING Selected
+                        DrawRectangle(rec_x1, rec_y1(submenu), rec_scroll_x2, rec_y2(submenu), 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_ENTER, errow_scroll_x, errow_y(submenu), scale, deph, 0, Buffer);
+
+                        /// @brief Title
+                        GLCD_DrawChar(CHAR_UP_ARROW, 114, 1, scale, deph, 1, Buffer);
+                        draw_text("Main menu", 32, title_y, scale, deph, 1, Buffer);
+
+                        /// @brief Scroll Bar
+                        DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        DrawRectangle(123, 7, 126, 13, 1, 1, Buffer);
+
+                        /// @brief Items
+                        draw_text("TIME SETTING", items_x, items_y(0), scale, deph, 0, Buffer);
+                        draw_text("DATE SETTING", items_x, items_y(1), scale, deph, 1, Buffer);
+
+                        if (key1_state == key_Hold) {
+                            menu = TIME_SETTING;
+
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            submenu     = 0;
+                            submenu_max = 4;
+                            submenu_min = 0;
+
+                            ClearBuffer(Buffer);
+                        }
 
                         break;
 
-                    case DATE_SETTING :
-                        sprintf(Data, "DATE_SETTING");
-                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+                    case 2 :
+                        /// @brief DATE_SETTING Selected
+                        DrawRectangle(rec_x1, rec_y1(submenu), rec_scroll_x2, rec_y2(submenu), 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_ENTER, errow_scroll_x, errow_y(submenu), scale, deph, 0, Buffer);
 
-                        sprintf(Data, "submenu: %02d", submenu);
-                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+                        /// @brief Title
+                        GLCD_DrawChar(CHAR_UP_ARROW, 114, 1, scale, deph, 1, Buffer);
+                        draw_text("Main menu", 32, title_y, scale, deph, 1, Buffer);
+
+                        /// @brief Scroll Bar
+                        DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        DrawRectangle(123, 13, 126, 19, 1, 1, Buffer);
+
+                        /// @brief Items
+                        draw_text("TIME SETTING", items_x, items_y(0), scale, deph, 1, Buffer);
+                        draw_text("DATE SETTING", items_x, items_y(1), scale, deph, 0, Buffer);
+
+                        if (key1_state == key_Hold) {
+                            menu = DATE_SETTING;
+
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            submenu     = 0;
+                            submenu_max = 4;
+                            submenu_min = 0;
+
+                            ClearBuffer(Buffer);
+                        }
 
                         break;
 
-                    case SAVEING_SETTING :
-                        sprintf(Data, "SAVEING_SETTING");
-                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+                    case 3 :
+                        /// @brief SAVEING_SETTING Selected
 
-                        sprintf(Data, "submenu: %02d", submenu);
-                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+                        DrawRectangle(rec_x1, 0, rec_scroll_x2, 8, 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_ENTER, 114, 1, scale, deph, 0, Buffer);
+
+                        /// @brief Scroll Bar
+                        DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        DrawRectangle(123, 19, 126, 25, 1, 1, Buffer);
+
+                        /// @brief Items
+                        draw_text("SAVEING SETTING", items_x, 1, scale, deph, 0, Buffer);
+                        draw_text("FIRMWARE INFO", items_x, items_y(0), scale, deph, 1, Buffer);
+
+                        if (key1_state == key_Hold) {
+                            menu = SAVEING_SETTING;
+
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            submenu     = 0;
+                            submenu_max = 4;
+                            submenu_min = 0;
+                            ClearBuffer(Buffer);
+                        }
 
                         break;
 
-                    case FIRMWARE_INFO :
-                        sprintf(Data, "FIRMWARE_INFO");
-                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+                    case 4 :
+                        /// @brief FIRMWARE_INFO Selected
+                        DrawRectangle(rec_x1, rec_y1(1), rec_scroll_x2, rec_y2(1), 1, 1, Buffer);
+                        GLCD_DrawChar(CHAR_ENTER, errow_scroll_x, errow_y(1), scale, deph, 0, Buffer);
 
-                        sprintf(Data, "submenu: %02d", submenu);
-                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+                        /// @brief Scroll Bar
+                        DrawRectangle(122, 0, 127, 31, 0, 1, Buffer);
+                        DrawRectangle(123, 25, 126, 30, 1, 1, Buffer);
+
+                        /// @brief Items
+
+                        draw_text("SAVEING SETTING", items_x, 1, scale, deph, 1, Buffer);
+                        draw_text("FIRMWARE INFO", items_x, items_y(0), scale, deph, 0, Buffer);
+
+                        if (key1_state == key_Hold) {
+                            menu = FIRMWARE_INFO;
+
+                            key1_state = NotActive;
+                            key2_state = NotActive;
+
+                            key1.output = NotActive;
+                            key2.output = NotActive;
+
+                            submenu     = 0;
+                            submenu_max = 4;
+                            submenu_min = 0;
+
+                            ClearBuffer(Buffer);
+                        }
 
                         break;
-
-                    case BACK :
-                        sprintf(Data, "MAIN");
-                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
-
-                        sprintf(Data, "submenu: %02d", submenu);
-                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
-
-                        break;
-                }
-
-                if (key1_state == key_Press) {
-                    if (submenu < FIRMWARE_INFO)
-                        submenu++;
-
-                    key1_state  = NotActive;
-                    key1.output = NotActive;
-                }
-                else if (key1_state == key_Hold) {
-                    menu        = MAIN;
-                    key1_state  = NotActive;
-                    key1.output = NotActive;
-
-                    ClearBuffer(Buffer);
-                }
-
-                if (key2_state == key_Press) {
-                    if (submenu > TIME_SETTING)
-                        submenu--;
-
-                    key2_state  = NotActive;
-                    key2.output = NotActive;
                 }
 
                 break;
@@ -197,27 +333,27 @@ int main() {
                     sprintf(Data, "%02d:%02d:%02d\r\n", t.hour, t.min, t.sec);
                 }
 
-                draw_text(Data, 0, (scale * Font_H * 1), 2, deph);
+                draw_text(Data, 0, (scale * Font_H * 1), 2, deph, 1, Buffer);
 
                 break;
 
             case DATE_SETTING :
 
                 sprintf(Data, "20%02d/%02d/%02d \r\n", d.year, d.month, d.day);
-                draw_text(Data, 60, 23, scale, deph);
+                draw_text(Data, 60, 23, scale, deph, 1, Buffer);
                 break;
 
             case SAVEING_SETTING :
 
                 sprintf(Data, "SAVEING_SETTING");
-                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+                draw_text(Data, 0, (scale * Font_H * 0), scale, deph, 1, Buffer);
 
                 break;
 
             case FIRMWARE_INFO :
 
                 sprintf(Data, "FIRMWARE_INFO");
-                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+                draw_text(Data, 0, (scale * Font_H * 0), scale, deph, 1, Buffer);
 
                 break;
         }
@@ -309,6 +445,7 @@ void init() {
     LCD_init();
     SetXY(0, 0);
     ClearLcd(0, 0);
+    ClearBuffer(Buffer);
 
     dma_channel_start(dma_adc);
     adc_run(true);
