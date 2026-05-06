@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-
 #define Low 0U
 #define High 1U
 
@@ -20,6 +19,7 @@ typedef struct _key key;
 enum _Key_State { NotActive, key_Press, key_DPress, key_Hold };
 typedef enum _Key_State Key_State;
 
+void KeyIint(key *root, uint8_t Deb_Press, uint8_t Deb_DPress, uint8_t Deb_Hold);
 Key_State KeyDetect(key *root, uint32_t input, uint8_t status);
 
 #endif

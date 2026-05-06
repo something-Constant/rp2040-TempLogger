@@ -23,7 +23,6 @@ MDF Core_ADC;
 void RTC_Callback();
 void init();
 void adc_dma_handler();
-void Ds3231_Alarm_handler();
 int16_t NTC_ADC2Temperature(uint16_t adc_value);
 
 // Print temperature
@@ -47,6 +46,9 @@ uint8_t last_sec = 0, rtc_alarm_pending;
 int dma_adc;
 int dma_adc_controll;
 
+/// buttons init
+key key1, key2;
+
 int main() {
     init();
 
@@ -58,37 +60,19 @@ int main() {
     Ds3231_SetAlarm_Interrupt(Alarm1, 1);
     Ds3231_Reset_Alarm_Flag(Alarm1);
 
+    KeyIint(&key1, 1, 4, 20);
+    KeyIint(&key2, 1, 4, 20);
+
     while (1) {
         Ds3231_GetTime(&t, Bin);
         Ds3231_GetDate(&d, Bin);
 
-        if (rtc_alarm_pending) {
+        sprintf(Data, "%d", KeyDetect(&key1, gpio_get(Button1), 1));
+        draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        if (gpio_get(Ds3231_Gpio_Interrupt) == 0U) {
             Ds3231_Reset_Alarm_Flag(Alarm1);
-            rtc_alarm_pending = 0;
         }
-
-        // if (Ds3231_Read_Alarm_Flag(Alarm1)) {
-        //     Ds3231_Reset_Alarm_Flag(Alarm1);
-        // }
-
-        /*
-            /// using polling method for ADC
-
-                //// Core temperature
-                adc_select_input(4);
-                ADC_raw     = median_update(&Core_ADC, adc_read());
-                ADC_Voltage = conversion_factor * ADC_raw;
-                // Core_Temp   = (float) (moving_average_update(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0)) / 100.0);
-                Core_Temp = ((27 - (ADC_Voltage - 0.706) / 0.001721));
-
-                //// NTC temperature
-                adc_select_input(0);
-                // temp = moving_average_update(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read())));
-                temp = NTC_ADC2Temperature(median_update(&NTC_ADC, adc_read()));
-
-                sprintf(Data, "CoreT:%0.1fC  NTCT:%0.0fC", Core_Temp, temp);
-                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
-        */
 
         if (t.time_format == _12hour_mode) {
             if (t.AM_PM)
@@ -101,8 +85,9 @@ int main() {
         }
 
         draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
-        sprintf(Data, "Date: 20%02d/%02d/%02d \r\n", d.year, d.month, d.day);
-        draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
+
+        // sprintf(Data, "Date: 20%02d/%02d/%02d \r\n", d.year, d.month, d.day);
+        // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
 
         // Ds3231_Print_Temp(Ds3231_Read_Temp(), Data);
         // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
@@ -164,9 +149,9 @@ void init() {
     gpio_set_dir(Ds3231_Gpio_Interrupt, GPIO_IN);
     gpio_pull_up(Ds3231_Gpio_Interrupt);
 
-    irq_set_exclusive_handler(IO_IRQ_BANK0, Ds3231_Alarm_handler);
-    gpio_set_irq_enabled(Ds3231_Gpio_Interrupt, GPIO_IRQ_EDGE_FALL, true);
-    irq_set_enabled(IO_IRQ_BANK0, true);
+    // irq_set_exclusive_handler(IO_IRQ_BANK0, Ds3231_Alarm_handler);
+    // gpio_set_irq_enabled(Ds3231_Gpio_Interrupt, GPIO_IRQ_EDGE_FALL, true);
+    // irq_set_enabled(IO_IRQ_BANK0, true);
 
     // ADC Inint
     adc_init();
@@ -231,15 +216,6 @@ void adc_dma_handler() {
     adc_run(false);
     adc_fifo_drain();
     dma_channel_abort(dma_adc);
-}
-
-void Ds3231_Alarm_handler() {
-    if (gpio_get_irq_event_mask(Ds3231_Gpio_Interrupt) & GPIO_IRQ_EDGE_FALL) {
-        gpio_acknowledge_irq(Ds3231_Gpio_Interrupt, GPIO_IRQ_EDGE_FALL);
-
-        // sio_hw->gpio_togl = (1ul << Led);
-        rtc_alarm_pending = 1;
-    }
 }
 
 void RTC_Callback() {

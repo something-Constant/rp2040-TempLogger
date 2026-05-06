@@ -26,6 +26,7 @@
 #include "ff.h"
 #include "fatfs_sd.h"
 #include "ds3231.h"
+#include "button.h"
 
 #define SD_CS_PIN 13
 

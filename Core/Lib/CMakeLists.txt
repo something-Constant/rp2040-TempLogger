@@ -3,6 +3,8 @@ add_subdirectory("ssd1306")
 add_subdirectory("sd-card")
 add_subdirectory("DS3231-driver(RTC)")
 add_subdirectory("BCD_Conversion")
+add_subdirectory("button")
+
 
 include_directories(${PROJECT_NAME}
    ${CMAKE_SOURCE_DIR}
