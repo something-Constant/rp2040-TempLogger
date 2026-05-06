@@ -85,7 +85,7 @@ void draw_text(char *str, int16_t x, int16_t y, uint8_t scale, uint8_t deph) {
     Glyph_Line *g = NULL;
 
     while (*str) {
-        g = get_glyph_Line(*str++);
+        g = get_glyph_Line(*(str++));
 
         if (! g)
             return;

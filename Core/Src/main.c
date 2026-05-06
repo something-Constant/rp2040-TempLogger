@@ -53,7 +53,7 @@ int main() {
     Ds3231_Reset_Alarm_Flag(Alarm1);
 
     /// key init
-    KeyIint(&key1, 1, 4, 50);
+    KeyIint(&key1, 1, 4, 30);
     KeyIint(&key2, 1, 4, 20);
 
     while (1) {
@@ -69,23 +69,18 @@ int main() {
 
         switch (menu) {
             case MAIN :
-
-                if (KeyDetect(&key1, gpio_get(Button1), 1)) {}
-
                 if (t.time_format == _12hour_mode) {
                     if (t.AM_PM)
                         sprintf(Data, "%02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "PM");
                     else
                         sprintf(Data, "%02d:%02d:%02d  %s\r\n", t.hour, t.min, t.sec, "AM");
+
+                    draw_text(Data, 0, (scale * Font_H * 1), 2, deph);
                 }
                 else {
                     sprintf(Data, "%02d:%02d:%02d\r\n", t.hour, t.min, t.sec);
+                    draw_text(Data, 20, (15), 2, deph);
                 }
-
-                draw_text(Data, 0, (scale * Font_H * 1), 2, deph);
-
-                sprintf(Data, "20%02d/%02d/%02d \r\n", d.year, d.month, d.day);
-                draw_text(Data, 60, 23, scale, deph);
 
                 // Ds3231_Print_Temp(Ds3231_Read_Temp(), Data);
                 // draw_text(Data, 0, (scale * Font_H * 2), scale, deph);
@@ -101,12 +96,22 @@ int main() {
                 //// NTC temperature
                 NTC_Temperature = NTC_ADC2Temperature(median_update(&NTC_ADC, ADC_Buffer[0]));
 
-                sprintf(Data, "Core:%02dC, Aria:%3dd", (uint8_t) Core_Temp, (uint8_t) NTC_Temperature);
+                sprintf(Data, "Temp:%3dC, 20%02d/%02d/%02d", NTC_Temperature, d.year, d.month, d.day);
                 draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+                if (key1_state == key_Hold) {
+                    menu          = SETTING;
+                    key1.Deb_Hold = 20;
+                    ClearBuffer(Buffer);
+                }
 
                 break;
 
             case SETTING :
+
+                sprintf(Data, "setting");
+                draw_text(Data, 0, 0, scale, deph);
+
                 break;
 
             case TIME_SETTING :
@@ -232,11 +237,13 @@ void init() {
 
     // NTC ADC 0 input filters init
     median_init(&NTC_ADC, ADC_Buffer[0]);
-    moving_average_init(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, ADC_Buffer[0])), 4, 16);
+    median_update(&NTC_ADC, ADC_Buffer[0]);
+    // moving_average_init(&mof, NTC_ADC2Temperature(median_update(&NTC_ADC, ADC_Buffer[0])), 4, 16);
 
     // Core temperature ADC 4 input filters init
+    median_init(&Core_ADC, ADC_Buffer[1]);
     ADC_Voltage = conversion_factor * median_update(&Core_ADC, ADC_Buffer[1]);
-    moving_average_init(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0), 4, 16);
+    // moving_average_init(&Cor, (int32_t) ((27 - (ADC_Voltage - 0.706) / 0.001721) * 100.0), 4, 16);
 }
 
 void adc_dma_handler() {
@@ -279,7 +286,7 @@ int16_t NTC_ADC2Temperature(uint16_t adc_value) {
     // Use 64-bit to prevent overflow
     int32_t temp = (int32_t) diff * offset + 256;
 
-    return p1 + (int32_t) (temp >> 9);
+    return (int16_t) (p1 + (int32_t) (temp >> 9));
 }
 
 void Ds3231_Print_Temp(int16_t fixed_temp, uint8_t *buff) {
