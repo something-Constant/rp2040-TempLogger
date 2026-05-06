@@ -36,10 +36,10 @@ const float conversion_factor = 3.3f / (1 << 12);
 float ADC_Voltage, Core_Temp;
 
 /// menus
-enum menus { MAIN, SETTING, TIME_SETTING, DATE_SETTING, SAVEING_SETTING, FIRMWARE_INFO };
+enum menus { MAIN, SETTING, TIME_SETTING, DATE_SETTING, SAVEING_SETTING, FIRMWARE_INFO, BACK };
 typedef enum menus MENUS;
 
-MENUS menu = MAIN;
+MENUS menu = MAIN, submenu = MAIN;
 
 int main() {
     init();
@@ -100,17 +100,88 @@ int main() {
                 draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
 
                 if (key1_state == key_Hold) {
-                    menu          = SETTING;
-                    key1.Deb_Hold = 20;
+                    menu    = SETTING;
+                    submenu = TIME_SETTING;
+
+                    key1_state  = NotActive;
+                    key1.output = NotActive;
+
                     ClearBuffer(Buffer);
                 }
 
                 break;
 
             case SETTING :
+                /// setting sub menu
+                switch (submenu) {
+                    case TIME_SETTING :
+                        sprintf(Data, "TIME_SETTING");
+                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
 
-                sprintf(Data, "setting");
-                draw_text(Data, 0, 0, scale, deph);
+                        sprintf(Data, "submenu: %02d", submenu);
+                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+                        break;
+
+                    case DATE_SETTING :
+                        sprintf(Data, "DATE_SETTING");
+                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+                        sprintf(Data, "submenu: %02d", submenu);
+                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+                        break;
+
+                    case SAVEING_SETTING :
+                        sprintf(Data, "SAVEING_SETTING");
+                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+                        sprintf(Data, "submenu: %02d", submenu);
+                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+                        break;
+
+                    case FIRMWARE_INFO :
+                        sprintf(Data, "FIRMWARE_INFO");
+                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+                        sprintf(Data, "submenu: %02d", submenu);
+                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+                        break;
+
+                    case BACK :
+                        sprintf(Data, "MAIN");
+                        draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
+                        sprintf(Data, "submenu: %02d", submenu);
+                        draw_text(Data, 0, (scale * Font_H * 1), scale, deph);
+
+                        break;
+                }
+
+                if (key1_state == key_Press) {
+                    if (submenu < FIRMWARE_INFO)
+                        submenu++;
+
+                    key1_state  = NotActive;
+                    key1.output = NotActive;
+                }
+                else if (key1_state == key_Hold) {
+                    menu        = MAIN;
+                    key1_state  = NotActive;
+                    key1.output = NotActive;
+
+                    ClearBuffer(Buffer);
+                }
+
+                if (key2_state == key_Press) {
+                    if (submenu > TIME_SETTING)
+                        submenu--;
+
+                    key2_state  = NotActive;
+                    key2.output = NotActive;
+                }
 
                 break;
 
@@ -137,9 +208,17 @@ int main() {
                 break;
 
             case SAVEING_SETTING :
+
+                sprintf(Data, "SAVEING_SETTING");
+                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
                 break;
 
             case FIRMWARE_INFO :
+
+                sprintf(Data, "FIRMWARE_INFO");
+                draw_text(Data, 0, (scale * Font_H * 0), scale, deph);
+
                 break;
         }
 
